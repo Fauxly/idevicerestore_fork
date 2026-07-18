@@ -462,37 +462,37 @@ int recovery_send_loaded_by_iboot(struct idevicerestore_client_t* client, plist_
 
 int recovery_send_ramdisk(struct idevicerestore_client_t* client, plist_t build_identity)
 {
-	const char *component = "RestoreRamDisk";
-	irecv_error_t recovery_error = IRECV_E_SUCCESS;
+    const char *component = "RestoreRamDisk";
+    irecv_error_t recovery_error = IRECV_E_SUCCESS;
 
-	if(client->recovery == NULL) {
-		if (recovery_client_new(client) < 0) {
-			return -1;
-		}
-	}
+    if(client->recovery == NULL) {
+        if (recovery_client_new(client) < 0) {
+            return -1;
+        }
+    }
 
-	char* value = NULL;
-	irecv_getenv(client->recovery->client, "ramdisk-size", &value);
-	logger(LL_INFO, "ramdisk-size=%s\n", (value ? value : "(unknown)"));
-	free(value);
-	value = NULL;
+    char* value = NULL;
+    irecv_getenv(client->recovery->client, "ramdisk-size", &value);
+    logger(LL_INFO, "ramdisk-size=%s\n", (value ? value : "(unknown)"));
+    free(value);
+    value = NULL;
 
-	if (recovery_send_ramdisk_component(client, build_identity, component) < 0) {
-		logger(LL_ERROR, "Unable to send %s to device.\n", component);
-		return -1;
-	}
+    if (recovery_send_component(client, build_identity, component) < 0) {
+        logger(LL_ERROR, "Unable to send %s to device.\n", component);
+        return -1;
+    }
 
-	irecv_send_command(client->recovery->client, "getenv ramdisk-delay");
+    irecv_send_command(client->recovery->client, "getenv ramdisk-delay");
 
-	recovery_error = irecv_send_command(client->recovery->client, "ramdisk");
-	if (recovery_error != IRECV_E_SUCCESS) {
-		logger(LL_ERROR, "Unable to execute %s\n", component);
-		return -1;
-	}
+    recovery_error = irecv_send_command(client->recovery->client, "ramdisk");
+    if (recovery_error != IRECV_E_SUCCESS) {
+        logger(LL_ERROR, "Unable to execute %s\n", component);
+        return -1;
+    }
 
-	sleep(2);
+    sleep(2);
 
-	return 0;
+    return 0;
 }
 
 int recovery_send_kernelcache(struct idevicerestore_client_t* client, plist_t build_identity)
