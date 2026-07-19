@@ -166,7 +166,7 @@ int send_pongo_image(struct idevicerestore_client_t* client)
 	
 	logger(LL_INFO, "Sending Pongo data (%d bytes)...\n", (int)PongoSize);
 	register_progress('DFUP', "Uploading");
-	irecv_error_t err = irecv_send_pongo(client->dfu->client, PongoImage, PongoSize);
+	irecv_error_t err = irecv_send_buffer(client->dfu->client, (unsigned char *)PongoImage, PongoSize, 0);
 	finalize_progress('DFUP');
 	if (err != IRECV_E_SUCCESS) {
 		logger(LL_ERROR, "Failed to send PongoOS image\n");
