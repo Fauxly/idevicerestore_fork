@@ -184,9 +184,12 @@ jobs:
           echo "CXXFLAGS=$CXXFLAGS"
           echo "LDFLAGS=$LDFLAGS"
 
-          ./autogen.sh --prefix=/usr/local
-          make -j"$(sysctl -n hw.ncpu)"
-          sudo make install
+          ./autogen.sh --prefix=/usr/local || {
+          echo "========== CONFIG.LOG =========="
+          cat config.log
+          echo "========== END CONFIG.LOG =========="
+          exit 1
+          }
 
           echo "=== Checking installed Turdus libirecovery ==="
           pkg-config --modversion libirecovery-1.0
