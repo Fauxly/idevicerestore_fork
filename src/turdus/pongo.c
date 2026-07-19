@@ -282,9 +282,9 @@ int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device 
 		uint32_t outpos = 0;
 		uint8_t in_progress = 1;
 		while (in_progress) {
-			rv = irecv_usb_control_transfer_no_timeout_retval(client, 0xa1, 2, 0, 0, (unsigned char *)&in_progress, (uint32_t)sizeof(in_progress), &r32);
+			rv = irecv_usb_control_transfer(client, 0xa1, 2, 0, 0, (unsigned char *)&in_progress, (uint32_t)sizeof(in_progress), &r32, 1000);
 			if (rv == IRECV_E_SUCCESS) {
-				rv = irecv_usb_control_transfer_no_timeout_retval(client, 0xa1, 1, 0, 0, (unsigned char *)(buf + outpos), 0x1000, &r32);
+				rv = irecv_usb_control_transfer(client, 0xa1, 1, 0, 0, (unsigned char *)(buf + outpos), 0x1000, &r32, 1000);
 				if (rv == IRECV_E_SUCCESS) {
 					if (catch) {
 						if (idr_client->flags & FLAG_FETCH_BSEP) {
@@ -351,7 +351,7 @@ int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device 
 				goto bad;
 			}
 		}
-		rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 4, 0xffff, 0, NULL, 0, &r32);
+		rv = irecv_usb_control_transfer(client, 0x21, 4, 0xffff, 0, NULL, 0, &r32, 1000);
 		if (rv != IRECV_E_SUCCESS) {
 			goto bad;
 		}
@@ -368,13 +368,13 @@ goto bad; \
 CHECK_BUFFER(_buf, name); \
 size_t _sz = _size; \
 logger(LL_DEBUG, "Setup bulk transfer (%d bytes)\n", (int)_size); \
-rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 1, 0, 0, (unsigned char *)&_sz, 4, &r32); \
+rv = irecv_usb_control_transfer(client, 0x21, 1, 0, 0, (unsigned char *)&_sz, 4, &r32, 1000); \
 if (rv != IRECV_E_SUCCESS) { \
 logger(LL_ERROR, "failed to setup bulk transfer for %s (%s)\n", name, irecv_strerror(rv)); \
 goto bad; \
 } \
 logger(LL_INFO, "Sending %s (%d bytes)\n", name, (int)_size); \
-rv = irecv_pongo_send_buffer(client, _buf, _size, &r32); \
+rv = irecv_send_buffer(client, (unsigned char *)_buf, _size, 0); \
 if (rv != IRECV_E_SUCCESS) { \
 logger(LL_ERROR, "Failed to send %s (%s)\n", name, irecv_strerror(rv)); \
 goto bad; \
@@ -398,7 +398,7 @@ logger(LL_INFO, "Fetching bsep\n"); \
 else { \
 logger(LL_INFO, "Loading %s\n", name); \
 } \
-rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 3, 0, 0, (unsigned char *)msg, (uint32_t)(strlen(msg)), &r32); \
+rv = irecv_usb_control_transfer(client, 0x21, 3, 0, 0, (unsigned char *)msg, (uint32_t)(strlen(msg)), &r32, 1000); \
 if (rv != IRECV_E_SUCCESS) { \
 logger(LL_ERROR, "Failed to send %s msg (%s)\n", name, irecv_strerror(rv)); \
 goto bad; \
@@ -729,7 +729,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 			if (boot_delay != 0) {
 				sleep(boot_delay);
 			}
-			rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 3, 0, 0, (unsigned char *)"bootux\n", (uint32_t)(strlen("bootux\n")), &r32);
+			rv = irecv_usb_control_transfer(client, 0x21, 3, 0, 0, (unsigned char *)"bootux\n", (uint32_t)(strlen("bootux\n")), &r32, 1000);
 			logger(LL_INFO, "Booting\n");
 			return 0;
 		}
