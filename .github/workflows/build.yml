@@ -94,11 +94,24 @@ jobs:
     - name: install dependencies
       run: |
           if test -x "`which port`"; then
-            sudo port install libtool autoconf automake pkgconfig
+            sudo port install libtool autoconf automake pkgconfig zstd
           else
-            brew install libtool autoconf automake pkgconfig
+            brew install libtool autoconf automake pkgconfig zstd
           fi
       shell: bash
+
+    - name: install libfragmentzip
+      run: |
+          brew tap libimobiledevice/homebrew-formulae || true
+          brew install libfragmentzip || brew install libimobiledevice/formulae/libfragmentzip
+
+          echo "=== libfragmentzip installation ==="
+          brew list libfragmentzip || true
+
+          echo "=== pkg-config search ==="
+          find /opt/homebrew /usr/local \
+            -name 'libfragmentzip.pc' \
+            -print 2>/dev/null || true
 
     - name: fetch libirecovery
       uses: dawidd6/action-download-artifact@v6
@@ -184,13 +197,44 @@ jobs:
           echo "LIBZIP_CFLAGS=-I`pwd`/deps/include" >> $GITHUB_ENV
           echo "LIBZIP_LIBS=`pwd`/deps/lib/libzip.a -Xlinker ${SDKDIR}/usr/lib/libbz2.tbd -Xlinker ${SDKDIR}/usr/lib/liblzma.tbd -lz" >> $GITHUB_ENV
 
+    - name: configure libfragmentzip environment
+      run: |
+          if [ -d "/opt/homebrew/opt/libfragmentzip/lib/pkgconfig" ]; then
+            FRAGMENTZIP_PKG="/opt/homebrew/opt/libfragmentzip/lib/pkgconfig"
+          elif [ -d "/usr/local/opt/libfragmentzip/lib/pkgconfig" ]; then
+            FRAGMENTZIP_PKG="/usr/local/opt/libfragmentzip/lib/pkgconfig"
+          else
+            FRAGMENTZIP_PKG="$(dirname "$(find /opt/homebrew /usr/local -name 'libfragmentzip.pc' -print -quit 2>/dev/null)")"
+          fi
+
+          echo "FRAGMENTZIP_PKG=$FRAGMENTZIP_PKG"
+
+          if [ -z "$FRAGMENTZIP_PKG" ] || [ ! -f "$FRAGMENTZIP_PKG/libfragmentzip.pc" ]; then
+            echo "ERROR: libfragmentzip.pc was not found"
+            exit 1
+          fi
+
+          echo "FRAGMENTZIP_PKG=$FRAGMENTZIP_PKG" >> "$GITHUB_ENV"
+
+          export PKG_CONFIG_PATH="$FRAGMENTZIP_PKG:/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+
+          pkg-config --modversion libfragmentzip
+          pkg-config --cflags libfragmentzip
+          pkg-config --libs libfragmentzip
+
     - name: autogen with Turdus Merula
       run: |
           export CFLAGS="${{env.BUILD_CFLAGS}} -Wno-nullability-completeness -Wno-expansion-to-defined"
-          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+
+          export PKG_CONFIG_PATH="${{env.FRAGMENTZIP_PKG}}:/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
 
           echo "Using CFLAGS: $CFLAGS"
           echo "Using PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
+
+          echo "=== Checking libfragmentzip ==="
+          pkg-config --modversion libfragmentzip
 
           ./autogen.sh --with-turdusmerula \
               libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
@@ -226,9 +270,6 @@ jobs:
 
           file ./src/idevicerestore
 
-          echo ""
-          echo "Searching for Turdus Merula options..."
-
           strings ./src/idevicerestore | grep -E \
             'show-hash|override-cpf|override-ramdisk|api-url|rsep-manifest|rsep-variant' || true
 
@@ -237,7 +278,6 @@ jobs:
               exit 1
           fi
 
-          echo ""
           echo "SUCCESS: Turdus Merula support is present in binary"
 
     - name: show Turdus Merula help
