@@ -206,7 +206,7 @@ jobs:
           fi
           echo "Checking: $LIBIRECOVERY_LIB"
           lipo -info "$LIBIRECOVERY_LIB"
-          lipo -verify_arch arm64 x86_64 "$LIBIRECOVERY_LIB"
+          lipo "$LIBIRECOVERY_LIB" -verify_arch arm64 x86_64
 
           echo "SUCCESS: Turdus libirecovery installed"
 
