@@ -2174,14 +2174,18 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 			// download fw
 			logger(LL_INFO, "RestoreSEP manifest information\n");
 			build_identity_print_information(client->rsep.identity);
-			
-			if (download_component_by_name(fragment, "RestoreSEP", NULL, &client->rsep) != 0) {
-				logger(LL_ERROR, "Unable to download RestoreSEP\n");
-				if (fragment) {
+
+			if (!client->rsep.data || !client->rsep.length) {
+			    if (download_component_by_name(fragment, "RestoreSEP", NULL, &client->rsep) != 0) {
+				    logger(LL_ERROR, "Unable to download RestoreSEP\n");
+				    if (fragment) {
 					fragmentzip_close(fragment);
-				}
-				return -1;
-			}
+				    }
+				    return -1;
+			    }
+		    } else {
+                logger(LL_INFO, "Using locally provided RestoreSEP (%zu bytes)\n", client->rsep.length);
+            }
 		}
 		
 		// Base
