@@ -1,16 +1,22 @@
 #include "pongo.h"
-#include "merula.h"
-#include "../lz4/lz4.h"
-#include "../lz4/lz4hc.h"
+#include "lz4.h"
+#include "lz4hc.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <libimobiledevice-glue/sha.h>
 
-#include "../dfu.h"
-#include "../idevicerestore.h"
-#include "../common.h"
+#include "dfu.h"
+#include "idevicerestore.h"
+#include "common.h"
+
+#include "stuff/Pongo_bin.h"
+#include "stuff/cpf_bin.h"
+#include "stuff/kpf_bin.h"
+#include "stuff/sep_racer_bin.h"
+#include "stuff/overlay_bin.h"
+#include "stuff/union_bin.h"
 
 static enum AUTOBOOT_STAGE CURRENT_STAGE = NONE;
 
@@ -68,6 +74,38 @@ ptr = NULL; \
 } \
 }
 
+static inline uint64_t read_u64_le(const unsigned char *p)
+{
+	return (uint64_t)p[0] |
+	((uint64_t)p[1] << 8) |
+	((uint64_t)p[2] << 16) |
+	((uint64_t)p[3] << 24) |
+	((uint64_t)p[4] << 32) |
+	((uint64_t)p[5] << 40) |
+	((uint64_t)p[6] << 48) |
+	((uint64_t)p[7] << 56);
+}
+
+static inline void write_u32_le(uint8_t *buf, uint32_t value)
+{
+	buf[0] = (uint8_t)(value & 0xFFu);
+	buf[1] = (uint8_t)((value >> 8) & 0xFFu);
+	buf[2] = (uint8_t)((value >> 16) & 0xFFu);
+	buf[3] = (uint8_t)((value >> 24) & 0xFFu);
+}
+
+static inline void write_u64_le(uint8_t *buf, uint64_t value)
+{
+	buf[0] = (uint8_t)(value & 0xFFu);
+	buf[1] = (uint8_t)((value >> 8) & 0xFFu);
+	buf[2] = (uint8_t)((value >> 16) & 0xFFu);
+	buf[3] = (uint8_t)((value >> 24) & 0xFFu);
+	buf[4] = (uint8_t)((value >> 32) & 0xFFu);
+	buf[5] = (uint8_t)((value >> 40) & 0xFFu);
+	buf[6] = (uint8_t)((value >> 48) & 0xFFu);
+	buf[7] = (uint8_t)((value >> 56) & 0xFFu);
+}
+
 static int lz4_compress_and_add_shc(const void *inbuf, const size_t insize, void **outbuf, size_t *outsize)
 {
 	void* buffer = NULL;
@@ -109,9 +147,9 @@ static int lz4_compress_and_add_shc(const void *inbuf, const size_t insize, void
 	return 0;
 }
 
-static int patch_pongo(uint8_t* pongo, const size_t sz, int sigcheckPatch)
+static void patch_pongo(uint8_t* pongo, const size_t sz, int sigcheckPatch)
 {
-	const uint64_t magicval = PONGO_MAGIC_VALUE;
+	const uint64_t magicval = 0x1337cafebabe4100uLL;
 	uint64_t ipf_flag = IPF_NONE;
 	if (sigcheckPatch) {
 		ipf_flag |= IPF_SIG_CHECK_PATCH;
@@ -121,11 +159,10 @@ static int patch_pongo(uint8_t* pongo, const size_t sz, int sigcheckPatch)
 	while (cur <= end) {
 		if (read_u64_le(cur) == magicval) {
 			write_u64_le(cur, ipf_flag);
-			return 0;
+			break;
 		}
 		cur += sizeof(uint64_t);
 	}
-	return -1;
 }
 
 int send_pongo_image(struct idevicerestore_client_t* client)
@@ -139,41 +176,36 @@ int send_pongo_image(struct idevicerestore_client_t* client)
 	void *PongoImage = NULL;
 	size_t PongoSize = 0;
 	
-	size_t pongoRawSize = gPongoOSLength;
+	size_t pongoRawSize = Pongo_bin_len;
 	if (pongoRawSize > 0x100000) {
-		logger(LL_ERROR, "Too large PongoOS bin");
+		error("Too large pongo bin");
 		return -1;
 	}
 	void *pongoRawImage = malloc(pongoRawSize);
 	if (!pongoRawImage) {
-		logger(LL_ERROR, "malloc failed (%s)\n", strerror(errno));
+		error("malloc failed (%s)\n", strerror(errno));
 		return -1;
 	}
 	memset(pongoRawImage, 0, pongoRawSize);
-	memcpy(pongoRawImage, gPongoOS, pongoRawSize);
+	memcpy(pongoRawImage, &Pongo_bin, pongoRawSize);
 	
-	if (patch_pongo(pongoRawImage, pongoRawSize, 1) != 0) {
-		logger(LL_ERROR, "Magic not found\n");
-		return -1;
-	}
+	patch_pongo(pongoRawImage, pongoRawSize, 1);
 	
 	if (lz4_compress_and_add_shc(pongoRawImage, pongoRawSize, (void*)&PongoImage, &PongoSize)) {
-		logger(LL_ERROR, "lz4 failed\n");
+		error("lz4 failed\n");
 		FREE(pongoRawImage);
 		FREE(PongoImage);
 		return -1;
 	}
 	
-	logger(LL_INFO, "Sending Pongo data (%d bytes)...\n", (int)PongoSize);
-	register_progress('DFUP', "Uploading");
-	irecv_error_t err = irecv_send_buffer(client->dfu->client, (unsigned char *)PongoImage, PongoSize, 0);
-	finalize_progress('DFUP');
-	if (err != IRECV_E_SUCCESS) {
-		logger(LL_ERROR, "Failed to send PongoOS image\n");
+	info("Sending Pongo data (%d bytes)...\n", (int)PongoSize);
+	if (irecv_send_pongo(client->dfu->client, PongoImage, PongoSize) != IRECV_E_SUCCESS) {
+		error("Failed to send pongo image\n");
 		FREE(pongoRawImage);
 		FREE(PongoImage);
 		return -1;
 	}
+	info("Pongo image sent\n");
 	
 	if (client->dfu != NULL) {
 		if (client->dfu->client != NULL) {
@@ -189,81 +221,12 @@ int send_pongo_image(struct idevicerestore_client_t* client)
 	return 0;
 }
 
-#define MAX_FILE_SIZE (20 * 1024 * 1024)
-static int load_rdsk(const uint8_t* bin, size_t bin_len, uint64_t flag, const char* name, uint8_t** rdsk_buf, size_t* rdsk_size)
-{
-	if (rdsk_buf) {
-		*rdsk_buf = NULL;
-	}
-	if (rdsk_size) {
-		*rdsk_size = 0;
-	}
-	uint8_t* tmpbuf = NULL;
-	uint64_t datasize = 0;
-	
-	uint8_t* buf = NULL;
-	if (bin_len < sizeof(rdsk_bin_t)) {
-		logger(LL_ERROR, "%s module too small\n", name);
-		return -1;
-	}
-	int res = posix_memalign((void**)&buf, 8, bin_len);
-	if (res != 0) {
-		logger(LL_ERROR, "Alloc failed: %s\n", name);
-		return -2;
-	}
-	memset(buf, 0, bin_len);
-	memcpy(buf, bin, bin_len);
-	int success = 0;
-	if (
-		(read_u32_le((uint8_t*)buf + offsetof(rdsk_bin_t, magic)) == 0xca1337feu) &&
-		(read_u64_le((uint8_t*)buf + offsetof(rdsk_bin_t, type)) == (0x0000cafebabe9990uLL | (flag << 48)))
-		)
-	{
-		uint64_t offset = 0;
-		datasize = read_u64_le((uint8_t*)buf + offsetof(rdsk_bin_t, datasize));
-		offset = read_u64_le((uint8_t*)buf + offsetof(rdsk_bin_t, offset));
-		if (datasize > MAX_FILE_SIZE) {
-			logger(LL_ERROR, "File is too large (%u > %u)\n", (unsigned int)datasize, (unsigned int)MAX_FILE_SIZE);
-			free(buf);
-			return -2;
-		}
-		if (offset != sizeof(rdsk_bin_t)) {
-			logger(LL_ERROR, "Wrong data structure size (%llu != %lu)\n", offset, sizeof(rdsk_bin_t));
-			free(buf);
-			return -2;
-		}
-		if ((datasize + offset) != bin_len) {
-			logger(LL_ERROR, "File is wrong size (%lu != %u)\n", (unsigned long)(datasize + offset), (unsigned int)bin_len);
-			free(buf);
-			return -2;
-		}
-		if (rdsk_buf && rdsk_size) {
-			tmpbuf = malloc(datasize);
-			if (!tmpbuf) {
-				logger(LL_ERROR, "Alloc failed\n");
-				free(buf);
-				return -2;
-			}
-			memcpy(tmpbuf, buf + offset, datasize);
-		}
-		success = 1;
-	}
-	free(buf);
-	if (!success) {
-		logger(LL_ERROR, "Invalid %s module\n", name);
-		if (tmpbuf) {
-			free(tmpbuf);
-		}
-		return -3;
-	}
-	if (tmpbuf) {
-		*rdsk_buf = tmpbuf;
-		*rdsk_size = datasize;
-	}
-	return 0;
-}
-
-int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device *device, irecv_client_t *pclient, int g_just_boot_pongo, int is_tethered, unsigned int boot_delay)
+int pongo_shell(struct idevicerestore_client_t* idr_client,
+				struct irecv_device *device,
+				irecv_client_t *pclient,
+				int g_just_boot_pongo,
+				int is_tethered,
+				unsigned int boot_delay)
 {
 	irecv_client_t client = *pclient;
 	
@@ -276,21 +239,19 @@ int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device 
 	char* foundp = NULL;
 	char* endp = NULL;
 	int rv = 0;
+	uint32_t r32 = 0;
 	while (1) {
 		char buf[0x2000] = {};
 		uint32_t outpos = 0;
 		uint8_t in_progress = 1;
 		while (in_progress) {
-			rv = irecv_usb_control_transfer(client, 0xa1, 2, 0, 0, (unsigned char *)&in_progress, (uint32_t)sizeof(in_progress), 1000);
-			if (rv >= 0) {
-				// В оригинальной функции количество прочитанных байт возвращается как результат функции
-				uint32_t bytes_read = (uint32_t)rv;
-				rv = irecv_usb_control_transfer(client, 0xa1, 1, 0, 0, (unsigned char *)(buf + outpos), 0x1000, 1000);
-				if (rv >= 0) {
-					uint32_t r32 = (uint32_t)rv;
+			rv = irecv_usb_control_transfer_no_timeout_retval(client, 0xa1, 2, 0, 0, (unsigned char *)&in_progress, (uint32_t)sizeof(in_progress), &r32);
+			if (rv == IRECV_E_SUCCESS) {
+				rv = irecv_usb_control_transfer_no_timeout_retval(client, 0xa1, 1, 0, 0, (unsigned char *)(buf + outpos), 0x1000, &r32);
+				if (rv == IRECV_E_SUCCESS) {
 					if (catch) {
-						if (idr_client->flags & FLAG_FETCH_BSEP) {
-							if (idr_client->flags & FLAG_FETCH_BSEP_SHC) {
+						if (idr_client->get_shc_block || idr_client->get_pte_block) {
+							if (idr_client->get_shc_block) {
 								typestr = "shcblock2";
 							}
 							else {
@@ -303,13 +264,13 @@ int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device 
 									char* startptr = (char*)(foundp + 11);
 									size_t payload_size = ((uintptr_t)endp - (uintptr_t)startptr)/2;
 									if (payload_size > 0x2000) {
-										logger(LL_ERROR, "dump_block: overflow\n");
+										error("dump_block: overflow\n");
 										goto bad;
 									}
-									logger(LL_INFO, "dump_block: size: %d bytes\n", (int)payload_size);
-									logger(LL_DEBUG, "dump_block: found block string\n");
+									info("dump_block: size: %d bytes\n", (int)payload_size);
+									debug("dump_block: found block string\n");
 									if (hexparse(save, (char*)startptr, payload_size) != 0) {
-										logger(LL_ERROR, "dump_block: bad string\n");
+										error("dump_block: bad string\n");
 										goto bad;
 									}
 									
@@ -326,13 +287,13 @@ int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device 
 										snprintf(&zfn[0] + strlen(zfn), sizeof(zfn) - strlen(zfn), "/%" PRIu64 "-%s-%s-restore-%s.bin", idr_client->ecid, idr_client->device->product_type, idr_client->version, typestr);
 										FILE *zf = fopen(zfn, "wb");
 										if (!zf) {
-											logger(LL_ERROR, "opening %s\n", zfn);
+											error("error opening %s\n", zfn);
 											goto bad;
 										}
 										fwrite(save, payload_size, 1, zf);
 										fflush(zf);
 										fclose(zf);
-										logger(LL_INFO, "%s.bin saved to '%s'\n", typestr, zfn);
+										info("%s.bin saved to '%s'\n", typestr, zfn);
 									}
 									catch = 0;
 									if (CURRENT_STAGE != SEND_RESET) {
@@ -347,26 +308,21 @@ int pongo_shell(struct idevicerestore_client_t* idr_client, struct irecv_device 
 						memmove(buf, buf + outpos - 0x1000, 0x1000);
 						outpos = 0x1000;
 					}
-					rv = IRECV_E_SUCCESS; // Устанавливаем статус успеха для логики цикла
-				} else {
-					rv = IRECV_E_UNKNOWN_ERROR;
 				}
-			} else {
-				rv = IRECV_E_UNKNOWN_ERROR;
 			}
 			if (rv != IRECV_E_SUCCESS) {
 				goto bad;
 			}
 		}
-		rv = irecv_usb_control_transfer(client, 0x21, 4, 0xffff, 0, NULL, 0, 1000);
-		if (rv < 0) {
+		rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 4, 0xffff, 0, NULL, 0, &r32);
+		if (rv != IRECV_E_SUCCESS) {
 			goto bad;
 		}
 		
 #define CHECK_BUFFER(__buf, _name) { \
-logger(LL_DEBUG, "Checking %s\n", _name); \
+debug("checking %s\n", _name); \
 if (!__buf) { \
-logger(LL_ERROR, "%s buffer not allocated or not found.\n", _name); \
+error("%s buffer not allocated or not found.\n", _name); \
 goto bad; \
 } \
 }
@@ -374,57 +330,29 @@ goto bad; \
 #define PONGO_SEND_BUFFER(_buf, _size, name) { \
 CHECK_BUFFER(_buf, name); \
 size_t _sz = _size; \
-logger(LL_DEBUG, "Setup bulk transfer (%d bytes)\n", (int)_size); \
-rv = irecv_usb_control_transfer(client, 0x21, 1, 0, 0, (unsigned char *)&_sz, 4, 1000); \
-if (rv < 0) { \
-logger(LL_ERROR, "failed to setup bulk transfer for %s\n", name); \
-goto bad; \
-} \
-logger(LL_INFO, "Sending %s (%d bytes)\n", name, (int)_size); \
-rv = irecv_send_buffer(client, (unsigned char *)_buf, _size, 0); \
+debug("setup bulk transfer (%d bytes)\n", (int)_size); \
+rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 1, 0, 0, (unsigned char *)&_sz, 4, &r32); \
 if (rv != IRECV_E_SUCCESS) { \
-logger(LL_ERROR, "Failed to send %s (%s)\n", name, irecv_strerror(rv)); \
+error("failed to setup bulk transfer for %s (%s)\n", name, irecv_strerror(rv)); \
 goto bad; \
 } \
-logger(LL_DEBUG, "Sent %s\n", name); \
+debug("sending %s (%d bytes)\n", name, (int)_size); \
+rv = irecv_pongo_send_buffer(client, _buf, _size, &r32); \
+if (rv != IRECV_E_SUCCESS) { \
+error("failed to send %s (%s)\n", name, irecv_strerror(rv)); \
+goto bad; \
+} \
+info("sent %s (%d bytes)\n", name, (int)_size); \
 }
-		
+
 #define PONGO_SEND_MSG(msg, name) { \
-if (strcmp(name, "pwn") == 0 || strcmp(name, "pwn_pte") == 0) { \
-logger(LL_INFO, "Exploiting with SEPROM exploit\n"); \
-} \
-else if (strcmp(name, "modload") == 0) { \
-logger(LL_INFO, "Loading module\n"); \
-} \
-else if (strcmp(name, "reset") == 0) { \
-logger(LL_INFO, "Aborting\n"); \
-} \
-else if (strcmp(name, "pte_get") == 0 || strcmp(name, "shc_get") == 0) { \
-logger(LL_INFO, "Fetching bsep\n"); \
-} \
-else { \
-logger(LL_INFO, "Loading %s\n", name); \
-} \
-rv = irecv_usb_control_transfer(client, 0x21, 3, 0, 0, (unsigned char *)msg, (uint32_t)(strlen(msg)), 1000); \
-if (rv < 0) { \
-logger(LL_ERROR, "Failed to send %s msg\n", name); \
+debug("sending msg (%s)\n", name); \
+rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 3, 0, 0, (unsigned char *)msg, (uint32_t)(strlen(msg)), &r32); \
+if (rv != IRECV_E_SUCCESS) { \
+error("failed to send %s msg (%s)\n", name, irecv_strerror(rv)); \
 goto bad; \
 } \
-if (strcmp(name, "pwn") == 0 || strcmp(name, "pwn_pte") == 0) { \
-logger(LL_INFO, "Successfully obtained SEPROM code execution?\n"); \
-} \
-else if (strcmp(name, "modload") == 0) { \
-logger(LL_DEBUG, "Module loaded\n"); \
-} \
-else if (strcmp(name, "reset") == 0) { \
-logger(LL_INFO, "Abort done, rebooing...\n"); \
-} \
-else if (strcmp(name, "pte_get") == 0 || strcmp(name, "shc_get") == 0) { \
-logger(LL_INFO, "Got bsep data?\n"); \
-} \
-else { \
-logger(LL_DEBUG, "Loaded %s\n", name); \
-} \
+info("sent %s msg\n", name); \
 }
 		if (pwn_seprom_state & 3) {
 			pwn_seprom_state = 4;
@@ -436,23 +364,23 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_SEP_MODULE) {
-			PONGO_SEND_BUFFER(gSEPRacer, gSEPRacerLength, "sep_racer");
+			PONGO_SEND_BUFFER(sep_racer_bin, sep_racer_bin_len, "sep_racer");
 			CURRENT_STAGE = LOAD_SEP_MODULE;
 			continue;
 		}
 		
 		if (CURRENT_STAGE == LOAD_SEP_MODULE) {
 			PONGO_SEND_MSG("modload\n", "modload");
-			if (idr_client->flags & FLAG_FETCH_BSEP_SHC) {
+			if (idr_client->get_shc_block) {
 				CURRENT_STAGE = GET_SHC_BLOCK;
 				continue;
 			}
-			if ((idr_client->flags & FLAG_FETCH_BSEP_PTE) && !(idr_client->flags & FLAG_LOAD_BSEP_SHC)) {
+			if (idr_client->get_pte_block && !idr_client->sep_fwload_race) {
 				CURRENT_STAGE = GET_PTE_BLOCK;
 				continue;
 			}
 			if (g_just_boot_pongo) {
-				if (!(idr_client->flags & FLAG_FETCH_BSEP_PTE)) {
+				if (!idr_client->get_pte_block) {
 					return 0;
 				}
 				CURRENT_STAGE = SEND_APIGM4TICKET;
@@ -472,7 +400,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		if (CURRENT_STAGE == GET_PTE_BLOCK) {
 			PONGO_SEND_MSG("sep pte_get\n", "pte_get");
 			CURRENT_STAGE = USB_TRANSFER_ERROR;
-			if (idr_client->flags & FLAG_LOAD_BSEP_SHC) {
+			if (idr_client->sep_fwload_race) {
 				CURRENT_STAGE = SEND_RESET;
 			}
 			catch = 1;
@@ -487,7 +415,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 				PONGO_SEND_MSG("sep xargsadd serial=3\n", "xargsadd");
 			}
 			CURRENT_STAGE = SEND_APIGM4TICKET;
-			if (idr_client->flags & FLAG_LOAD_BSEP_PTE) {
+			if (idr_client->sep_boot_tz0_race) {
 				CURRENT_STAGE = SEND_PTE;
 			}
 			continue;
@@ -507,9 +435,20 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		
 		if (CURRENT_STAGE == PWN_SEPROM_PTE) {
 			pwn_seprom_state = 2;
-			PONGO_SEND_MSG("sep pwn_pte\n", "pwn_pte");
+			PONGO_SEND_MSG("sep pwn_pte\n", "pwn pte");
 			
-			if (idr_client->build_major >= 14 && is_tethered) {
+			if ((
+				 idr_client->build_major == 14 ||
+				 idr_client->build_major == 15 ||
+				 idr_client->build_major == 16 ||
+				 idr_client->build_major == 17 ||
+				 idr_client->build_major == 18 ||
+				 idr_client->build_major == 19 ||
+				 idr_client->build_major == 20 ||
+				 idr_client->build_major == 21 ||
+				 idr_client->build_major == 22 ||
+				 idr_client->build_major == 23
+				 ) && is_tethered) {
 				CURRENT_STAGE = SEND_KPF_TETHERED;
 			}
 			else if (idr_client->build_major == 14 && idr_client->need_asr_patch) {
@@ -525,7 +464,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_APIGM4TICKET) {
-			PONGO_SEND_BUFFER(idr_client->sep.im4m.data, idr_client->sep.im4m.length, "ApImg4Ticket");
+			PONGO_SEND_BUFFER(idr_client->img4_manifest, idr_client->img4_manifest_len, "ApImg4Ticket");
 			CURRENT_STAGE = LOAD_APIGM4TICKET;
 			continue;
 		}
@@ -537,7 +476,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_APIGM4TICKET_HASH) {
-			PONGO_SEND_BUFFER(idr_client->sep.mhash.data, idr_client->sep.mhash.length, "ApImg4TicketHash");
+			PONGO_SEND_BUFFER(idr_client->img4_manifest_hash, idr_client->img4_manifest_hash_len, "ApImg4TicketHash");
 			CURRENT_STAGE = LOAD_APIGM4TICKET_HASH;
 			continue;
 		}
@@ -549,7 +488,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_RSEP) {
-			PONGO_SEND_BUFFER(idr_client->sep.img4.data, idr_client->sep.img4.length, "RestoreSEP");
+			PONGO_SEND_BUFFER(idr_client->rsep_img4, idr_client->rsep_img4_len, "RestoreSEP");
 			CURRENT_STAGE = LOAD_RSEP;
 			continue;
 		}
@@ -561,7 +500,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_SEP_PAYLOAD) {
-			PONGO_SEND_BUFFER(idr_client->sep.im4p.data, idr_client->sep.im4p.length, "SEP");
+			PONGO_SEND_BUFFER(idr_client->sepi_im4p, idr_client->sepi_im4p_len, "SEP");
 			CURRENT_STAGE = LOAD_SEP_PAYLOAD;
 			continue;
 		}
@@ -590,7 +529,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SET_SEP_FLAG) {
-			if (idr_client->flags & FLAG_FETCH_BSEP_PTE) {
+			if (idr_client->get_pte_block) {
 				PONGO_SEND_MSG("sep sep_flag e\n", "sep_flag");
 			}
 			else {
@@ -603,12 +542,23 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		if (CURRENT_STAGE == PWN_SEPROM) {
 			pwn_seprom_state = 1;
 			PONGO_SEND_MSG("sep pwn\n", "pwn");
-			if (idr_client->flags & FLAG_FETCH_BSEP_PTE) {
+			if (idr_client->get_pte_block) {
 				CURRENT_STAGE = GET_PTE_BLOCK;
 				continue;
 			}
 			
-			if (idr_client->build_major >= 14 && is_tethered) {
+			if ((
+				 idr_client->build_major == 14 ||
+				 idr_client->build_major == 15 ||
+				 idr_client->build_major == 16 ||
+				 idr_client->build_major == 17 ||
+				 idr_client->build_major == 18 ||
+				 idr_client->build_major == 19 ||
+				 idr_client->build_major == 20 ||
+				 idr_client->build_major == 21 ||
+				 idr_client->build_major == 22 ||
+				 idr_client->build_major == 23
+				 ) && is_tethered) {
 				CURRENT_STAGE = SEND_KPF_TETHERED;
 			}
 			else if (idr_client->build_major == 14 && idr_client->need_asr_patch) {
@@ -624,7 +574,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_KPF_TETHERED) {
-			PONGO_SEND_BUFFER(gKPF, gKPFLength, "uploadKpfModule");
+			PONGO_SEND_BUFFER(kpf_bin, kpf_bin_len, "uploadKpfModule");
 			CURRENT_STAGE = LOAD_KPF_TETHERED;
 			continue;
 		}
@@ -642,44 +592,12 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_OVERLAY) {
-			uint8_t* rdsk_buf = NULL;
-			size_t rdsk_size = 0;
-			uint64_t flag = 0;
-			char* path = NULL;
-			uint8_t* cur_bin_buf = NULL;
-			size_t cur_bin_size = 0;
-			cur_bin_buf = (uint8_t*)gRAMDisk;
-			cur_bin_size = (size_t)gRAMDiskLength;
 			if (idr_client->build_major == 14 || idr_client->build_major == 15) {
-				if (boot_delay == 0) {
-					flag = 0x2222;
-					path = "union.dmg[iPhoneOS]";
-				}
-				else {
-					flag = 0x2222;
-					path = "union.dmg[tvOS]";
-				}
+				PONGO_SEND_BUFFER(union_bin, union_bin_len, "uploadOverlay");
 			}
 			else {
-				if (boot_delay == 0) {
-					flag = 0x1111;
-					path = "overlay.dmg[iPhoneOS]";
-				}
-				else {
-					flag = 0x1111;
-					path = "overlay.dmg[tvOS]";
-				}
+				PONGO_SEND_BUFFER(overlay_bin, overlay_bin_len, "uploadOverlay");
 			}
-			if (cur_bin_buf == NULL) {
-				logger(LL_ERROR, "No ramdisk buffer\n");
-				return -1;
-			}
-			if (load_rdsk(cur_bin_buf, cur_bin_size, flag, path, &rdsk_buf, &rdsk_size)) {
-				logger(LL_ERROR, "Unable to extract ramdisk\n");
-				return -1;
-			}
-			PONGO_SEND_BUFFER(rdsk_buf, rdsk_size, path);
-			free(rdsk_buf);
 			CURRENT_STAGE = LOAD_OVERLAY;
 			continue;
 		}
@@ -703,7 +621,7 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		}
 		
 		if (CURRENT_STAGE == SEND_CRYPTEX1_NONCE_SETTER) {
-			PONGO_SEND_BUFFER(gCPF, gCPFLength, "uploadCpfModule");
+			PONGO_SEND_BUFFER(cpf_bin, cpf_bin_len, "uploadCpfModule");
 			CURRENT_STAGE = LOAD_CRYPTEX1_NONCE_SETTER;
 			continue;
 		}
@@ -736,8 +654,8 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 			if (boot_delay != 0) {
 				sleep(boot_delay);
 			}
-			rv = irecv_usb_control_transfer(client, 0x21, 3, 0, 0, (unsigned char *)"bootux\n", (uint32_t)(strlen("bootux\n")), 1000);
-			logger(LL_INFO, "Booting\n");
+			rv = irecv_usb_control_transfer_no_timeout_retval(client, 0x21, 3, 0, 0, (unsigned char *)"bootux\n", (uint32_t)(strlen("bootux\n")), &r32);
+			info("sent bootux\n");
 			return 0;
 		}
 		
@@ -749,9 +667,9 @@ logger(LL_DEBUG, "Loaded %s\n", name); \
 		if (CURRENT_STAGE == USB_TRANSFER_ERROR) {
 		bad:
 			if (pwn_seprom_state & 3) {
-				logger(LL_ERROR, "maybe SEPROM pwn fail?\n");
+				error("maybe SEPROM pwn fail?\n");
 			}
-			logger(LL_ERROR, "usb transfer error\n");
+			error("usb transfer error\n");
 			return -1;
 		}
 	}
