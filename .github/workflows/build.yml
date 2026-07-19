@@ -87,6 +87,7 @@ jobs:
       with:
         name: idevicerestore-latest_${{env.target_triplet}}
         path: idevicerestore.tar
+
   build-macOS:
     runs-on: macOS-latest
     steps:
@@ -98,6 +99,7 @@ jobs:
             brew install libtool autoconf automake pkgconfig
           fi
       shell: bash
+
     - name: fetch libirecovery
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -105,6 +107,7 @@ jobs:
         workflow: build.yml
         name: libirecovery-latest_macOS
         repo: libimobiledevice/libirecovery
+
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -112,6 +115,7 @@ jobs:
         workflow: build.yml
         name: libplist-latest_macOS
         repo: libimobiledevice/libplist
+
     - name: fetch libusbmuxd
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -119,6 +123,7 @@ jobs:
         workflow: build.yml
         name: libusbmuxd-latest_macOS
         repo: libimobiledevice/libusbmuxd
+
     - name: fetch libimobiledevice-glue
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -126,6 +131,7 @@ jobs:
         workflow: build.yml
         name: libimobiledevice-glue-latest_macOS
         repo: libimobiledevice/libimobiledevice-glue
+
     - name: fetch libimobiledevice
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -133,6 +139,7 @@ jobs:
         workflow: build.yml
         name: libimobiledevice-latest_macOS
         repo: libimobiledevice/libimobiledevice
+
     - name: fetch libtatsu
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -140,6 +147,7 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_macOS
         repo: libimobiledevice/libtatsu
+
     - name: install external dependencies
       run: |
           mkdir extract
@@ -147,51 +155,110 @@ jobs:
             tar -C extract -xvf $I
           done
           sudo cp -r extract/* /
+
     - uses: actions/checkout@v4
+
     - name: install additional requirements
       run: |
           SDKDIR=`xcrun --sdk macosx --show-sdk-path 2>/dev/null`
           echo "SDKDIR=$SDKDIR" >> $GITHUB_ENV
+
           TESTARCHS="arm64 x86_64"
           USEARCHS=
           for ARCH in $TESTARCHS; do
-            if echo "int main(int argc, char **argv) { return 0; }" |clang -arch $ARCH -o /dev/null -isysroot $SDKDIR -x c - 2>/dev/null; then
+            if echo "int main(int argc, char **argv) { return 0; }" | clang -arch $ARCH -o /dev/null -isysroot $SDKDIR -x c - 2>/dev/null; then
               USEARCHS="$USEARCHS -arch $ARCH"
             fi
           done
+
           export CFLAGS="$USEARCHS -isysroot $SDKDIR"
           echo "Using CFLAGS: $CFLAGS"
           echo "BUILD_CFLAGS=$CFLAGS" >> $GITHUB_ENV
+
           mkdir -p deps
           FILENAME="libzip-static.tar.bz2"
           curl -o $FILENAME.b64 -Ls "https://gist.github.com/nikias/3da15d03120382f87b44029cd8495a02/raw/99cd8138fed99e8f6530b6f179f787342c698e1f/libzip-1.7.1_static_macOS.tar.bz2"
           base64 -D < $FILENAME.b64 > $FILENAME
           tar -C deps -xjf $FILENAME
+
           echo "LIBZIP_CFLAGS=-I`pwd`/deps/include" >> $GITHUB_ENV
           echo "LIBZIP_LIBS=`pwd`/deps/lib/libzip.a -Xlinker ${SDKDIR}/usr/lib/libbz2.tbd -Xlinker ${SDKDIR}/usr/lib/liblzma.tbd -lz" >> $GITHUB_ENV
-    - name: autogen
+
+    - name: autogen with Turdus Merula
       run: |
           export CFLAGS="${{env.BUILD_CFLAGS}} -Wno-nullability-completeness -Wno-expansion-to-defined"
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig"
+
           echo "Using CFLAGS: $CFLAGS"
-          ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
-              libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" libcurl_LIBS="-lcurl" \
-              libzip_CFLAGS="$LIBZIP_CFLAGS" libzip_LIBS="$LIBZIP_LIBS" \
-              zlib_CFLAGS="-I${{env.SDKDIR}}/usr/include" zlib_LIBS="-lz" \
-              libimobiledevice_CFLAGS="-I/usr/local/include" libimobiledevice_LIBS="-L/usr/local/lib -lusbmuxd-2.0 -limobiledevice-glue-1.0 -limobiledevice-1.0"
+          echo "Using PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
+
+          ./autogen.sh --with-turdusmerula \
+              libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
+              libcurl_LIBS="-lcurl" \
+              libzip_CFLAGS="$LIBZIP_CFLAGS" \
+              libzip_LIBS="$LIBZIP_LIBS" \
+              zlib_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
+              zlib_LIBS="-lz" \
+              libimobiledevice_CFLAGS="-I/usr/local/include" \
+              libimobiledevice_LIBS="-L/usr/local/lib -lusbmuxd-2.0 -limobiledevice-glue-1.0 -limobiledevice-1.0"
+
+          echo "========================================"
+          echo "Checking HAVE_TURDUS_MERULA"
+          echo "========================================"
+
+          grep -n "HAVE_TURDUS_MERULA" config.h || true
+
+          if ! grep -q '^#define HAVE_TURDUS_MERULA 1' config.h; then
+              echo "ERROR: HAVE_TURDUS_MERULA is not enabled"
+              exit 1
+          fi
+
+          echo "SUCCESS: HAVE_TURDUS_MERULA is enabled"
+
     - name: make
       run: make
+
+    - name: verify Turdus Merula build
+      run: |
+          echo "========================================"
+          echo "Checking final idevicerestore binary"
+          echo "========================================"
+
+          file ./src/idevicerestore
+
+          echo ""
+          echo "Searching for Turdus Merula options..."
+
+          strings ./src/idevicerestore | grep -E \
+            'show-hash|override-cpf|override-ramdisk|api-url|rsep-manifest|rsep-variant' || true
+
+          if ! strings ./src/idevicerestore | grep -q "override-cpf"; then
+              echo "ERROR: Turdus Merula options are missing from binary"
+              exit 1
+          fi
+
+          echo ""
+          echo "SUCCESS: Turdus Merula support is present in binary"
+
+    - name: show Turdus Merula help
+      run: |
+          ./src/idevicerestore --help || true
+
     - name: make install
       run: sudo make install
+
     - name: prepare artifact
       run: |
           mkdir -p dest
           DESTDIR=`pwd`/dest make install
           tar -C dest -cf idevicerestore.tar usr
+
     - name: publish artifact
       uses: actions/upload-artifact@v4
       with:
         name: idevicerestore-latest_macOS
         path: idevicerestore.tar
+
   build-windows:
     runs-on: windows-2019
     defaults:
@@ -283,6 +350,7 @@ jobs:
           tar -C deps -xjf $FILENAME
           echo "LIBZIP_CFLAGS=-I`pwd`/deps/include" >> $GITHUB_ENV
           echo "LIBZIP_LIBS=`pwd`/deps/lib/libzip.a /${{env.dest}}/lib/libbz2.a /${{env.dest}}/lib/liblzma.a " >> $GITHUB_ENV
+
           FILENAME="libcurl-8.1.0-static.tar.bz2"
           curl -o $FILENAME.b64 -Ls "https://gist.github.com/nikias/6c397a0a2f4f4eafd91b81cccd22b761/raw/85216e60af6787f3b351291165eb91bd585ff09a/libcurl-8.1.0-static-${{matrix.arch}}-${{env.dest}}.tar.bz2"
           base64 -d < $FILENAME.b64 > $FILENAME
@@ -308,6 +376,7 @@ jobs:
       with:
         name: idevicerestore-latest_${{ matrix.arch }}-${{ env.dest }}
         path: idevicerestore.tar
+
   build-docker:
     runs-on: ubuntu-latest
     steps:
