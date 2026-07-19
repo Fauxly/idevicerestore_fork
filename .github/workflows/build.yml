@@ -92,11 +92,11 @@ jobs:
     steps:
     - name: install dependencies
       run: |
-          if test -x "`which port`"; then
-            sudo port install libtool autoconf automake pkgconfig
-          else
-            brew install libtool autoconf automake pkgconfig
-          fi
+         if test -x "`which port`"; then
+           sudo port install libtool autoconf automake pkgconfig zstd
+         else
+           brew install libtool autoconf automake pkgconfig zstd
+         fi
       shell: bash
     - name: fetch libirecovery
       uses: dawidd6/action-download-artifact@v6
@@ -173,11 +173,15 @@ jobs:
       run: |
           export CFLAGS="${{env.BUILD_CFLAGS}} -Wno-nullability-completeness -Wno-expansion-to-defined"
           echo "Using CFLAGS: $CFLAGS"
-          ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig \
-              libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" libcurl_LIBS="-lcurl" \
-              libzip_CFLAGS="$LIBZIP_CFLAGS" libzip_LIBS="$LIBZIP_LIBS" \
-              zlib_CFLAGS="-I${{env.SDKDIR}}/usr/include" zlib_LIBS="-lz" \
-              libimobiledevice_CFLAGS="-I/usr/local/include" libimobiledevice_LIBS="-L/usr/local/lib -lusbmuxd-2.0 -limobiledevice-glue-1.0 -limobiledevice-1.0"
+          ./autogen.sh --with-turdusmerula \ PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig" \
+              libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
+              libcurl_LIBS="-lcurl" \
+              libzip_CFLAGS="$LIBZIP_CFLAGS" \
+              libzip_LIBS="$LIBZIP_LIBS" \
+              zlib_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
+              zlib_LIBS="-lz" \
+              libimobiledevice_CFLAGS="-I/usr/local/include" \
+              libimobiledevice_LIBS="-L/usr/local/lib -lusbmuxd-2.0 -limobiledevice-glue-1.0 -limobiledevice-1.0"
     - name: make
       run: make
     - name: make install
