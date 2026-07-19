@@ -13,7 +13,7 @@ jobs:
     - name: install dependencies
       run: |
           sudo apt-get update
-          sudo apt-get install libzip-dev libcurl4-openssl-dev libusb-1.0-0-dev
+          sudo apt-get install libzip-dev libcurl4-openssl-dev libusb-1.0-0-dev autoconf automake libtool pkg-config git
     - name: prepare environment
       run: |
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
@@ -59,13 +59,6 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_${{env.target_triplet}}
         repo: libimobiledevice/libtatsu
-    - name: fetch libfragmentzip
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libfragmentzip-latest_${{env.target_triplet}}
-        repo: libimobiledevice/libfragmentzip
     - name: install external dependencies
       run: |
           mkdir extract
@@ -74,6 +67,22 @@ jobs:
           done
           rm -rf extract/lib
           sudo cp -r extract/* /
+          sudo ldconfig
+    - name: build libgeneral
+      run: |
+          git clone --recursive https://github.com/tihmstar/libgeneral
+          cd libgeneral
+          ./autogen.sh
+          make
+          sudo make install
+          sudo ldconfig
+    - name: build libfragmentzip
+      run: |
+          git clone https://github.com/tihmstar/libfragmentzip
+          cd libfragmentzip
+          ./autogen.sh
+          make
+          sudo make install
           sudo ldconfig
     - uses: actions/checkout@v4
       with:
@@ -147,13 +156,6 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_macOS
         repo: libimobiledevice/libtatsu
-    - name: fetch libfragmentzip
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libfragmentzip-latest_macOS
-        repo: libimobiledevice/libfragmentzip
     - name: install external dependencies
       run: |
           mkdir extract
@@ -161,6 +163,20 @@ jobs:
             tar -C extract -xvf $I
           done
           sudo cp -r extract/* /
+    - name: build libgeneral
+      run: |
+          git clone --recursive https://github.com/tihmstar/libgeneral
+          cd libgeneral
+          ./autogen.sh
+          make
+          sudo make install
+    - name: build libfragmentzip
+      run: |
+          git clone https://github.com/tihmstar/libfragmentzip
+          cd libfragmentzip
+          ./autogen.sh
+          make
+          sudo make install
     - uses: actions/checkout@v4
     - name: install additional requirements
       run: |
@@ -291,13 +307,6 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_${{ matrix.arch }}-${{ env.dest }}
         repo: libimobiledevice/libtatsu
-    - name: fetch libfragmentzip
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libfragmentzip-latest_${{ matrix.arch }}-${{ env.dest }}
-        repo: libimobiledevice/libfragmentzip
     - name: install external dependencies
       run: |
           mkdir extract
@@ -305,6 +314,20 @@ jobs:
             tar -C extract -xvf $I
           done
           cp -r extract/* /
+    - name: build libgeneral
+      run: |
+          git clone --recursive https://github.com/tihmstar/libgeneral
+          cd libgeneral
+          ./autogen.sh --prefix=/${{env.dest}}
+          make
+          make install
+    - name: build libfragmentzip
+      run: |
+          git clone https://github.com/tihmstar/libfragmentzip
+          cd libfragmentzip
+          ./autogen.sh --prefix=/${{env.dest}}
+          make
+          make install
     - uses: actions/checkout@v4
     - name: install additional requirements
       run: |
