@@ -81,6 +81,20 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Verify universal Merula dependencies
+      run: |
+          echo "=== Universal dependency check ==="
+          for pattern in             "/usr/local/lib/libirecovery-1.0.dylib"             "/usr/local/lib/libzstd.dylib"             "/usr/local/lib/libgeneral.dylib"             "/usr/local/lib/libfragmentzip.dylib"; do
+            LIB="$(find /usr/local/lib -maxdepth 1 -name "$(basename "$pattern")*" | head -n 1)"
+            if [ -n "$LIB" ]; then
+              echo "Checking $LIB"
+              lipo -info "$LIB"
+              lipo "$LIB" -verify_arch arm64 x86_64
+            else
+              echo "WARNING: No dylib found for $pattern; checking static archives may be required."
+            fi
+          done
+
     - name: autogen
       run: ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
@@ -211,8 +225,35 @@ jobs:
           echo "SUCCESS: Turdus libirecovery installed"
 
 
+    - name: build and install universal zstd
+      run: |
+          echo "=== Building universal zstd ==="
+          rm -rf /tmp/zstd
+          git clone --depth 1 https://github.com/facebook/zstd.git /tmp/zstd
+          cd /tmp/zstd
+
+          SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
+          export CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+          export CXXFLAGS="$CFLAGS"
+          export LDFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+
+          make -C lib clean
+          make -C lib -j"$(sysctl -n hw.ncpu)" CFLAGS="$CFLAGS" CXXFLAGS="$CXXFLAGS" LDFLAGS="$LDFLAGS"
+          sudo make -C lib install PREFIX=/usr/local
+
+          echo "=== Checking zstd architectures ==="
+          ZSTD_LIB="$(find /usr/local/lib -maxdepth 1 \( -name 'libzstd.dylib' -o -name 'libzstd.a' \) | head -n 1)"
+          test -n "$ZSTD_LIB"
+          lipo -info "$ZSTD_LIB"
+          lipo "$ZSTD_LIB" -verify_arch arm64 x86_64
+
     - name: build and install libgeneral
       run: |
+          SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
+          export CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+          export CXXFLAGS="$CFLAGS"
+          export LDFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+
           echo "=== Building libgeneral ==="
 
           git clone https://github.com/tihmstar/libgeneral.git /tmp/libgeneral
@@ -235,6 +276,11 @@ jobs:
 
     - name: build and install libfragmentzip
       run: |
+          SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
+          export CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+          export CXXFLAGS="$CFLAGS"
+          export LDFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+
           echo "=== Building libfragmentzip ==="
 
           git clone https://github.com/tihmstar/libfragmentzip.git /tmp/libfragmentzip
