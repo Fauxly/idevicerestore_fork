@@ -415,7 +415,7 @@ static void irecv_event_cb(const irecv_device_event_t* event, void *userdata)
 				case IRECV_K_PORT_DFU_MODE:
 					client->mode = MODE_PORTDFU;
 					break;
-#ifdef HAVE_TURDUS_MERULA
+#if defined(HAVE_TURDUS_MERULA) && defined(IRECV_K_PONGO_MODE)
 				case IRECV_K_PONGO_MODE:
 					client->mode = MODE_PONGO;
 					break;
