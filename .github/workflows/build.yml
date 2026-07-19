@@ -25,7 +25,7 @@ jobs:
         github_token: ${{secrets.GITHUB_TOKEN}}
         workflow: build.yml
         name: libirecovery-latest_${{env.target_triplet}}
-        repo: turdus-m3rula/libirecovery
+        repo: libimobiledevice/libirecovery
 
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
@@ -116,14 +116,6 @@ jobs:
           fi
       shell: bash
 
-    - name: fetch libirecovery
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libirecovery-latest_macOS
-        repo: turdus-m3rula/libirecovery
-
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -175,6 +167,25 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
+    - name: build and install Turdus libirecovery
+      run: |
+          echo "=== Building Turdus Merula libirecovery ==="
+
+          git clone https://github.com/turdus-m3rula/libirecovery.git /tmp/turdus-libirecovery
+          cd /tmp/turdus-libirecovery
+
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
+          ./autogen.sh --prefix=/usr/local
+          make -j"$(sysctl -n hw.ncpu)"
+          sudo make install
+
+          echo "=== Checking installed Turdus libirecovery ==="
+          pkg-config --modversion libirecovery-1.0
+          grep -n -E 'IRECV_K_PONGO_MODE|irecv_pongo_send_buffer|irecv_usb_control_transfer_no_timeout_retval' /usr/local/include/libirecovery.h
+
+          echo "SUCCESS: Turdus libirecovery installed"
 
     - name: build and install libgeneral
       run: |
@@ -405,7 +416,7 @@ jobs:
         github_token: ${{secrets.GITHUB_TOKEN}}
         workflow: build.yml
         name: libirecovery-latest_${{ matrix.arch }}-${{ env.dest }}
-        repo: turdus-m3rula/libirecovery
+        repo: libimobiledevice/libirecovery
 
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
