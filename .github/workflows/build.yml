@@ -180,8 +180,11 @@ jobs:
       run: |
           echo "=== Building libgeneral ==="
 
-          git clone --depth 1 https://github.com/tihmstar/libgeneral.git /tmp/libgeneral
+          git clone https://github.com/tihmstar/libgeneral.git /tmp/libgeneral
           cd /tmp/libgeneral
+
+          echo "libgeneral git commit count:"
+          git rev-list --count HEAD
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
@@ -190,34 +193,28 @@ jobs:
           sudo make install
 
           echo "=== Checking libgeneral ==="
-          find /usr/local /opt/homebrew -name 'libgeneral.pc' -print 2>/dev/null || true
           pkg-config --modversion libgeneral
           pkg-config --cflags libgeneral
           pkg-config --libs libgeneral
+
 
     - name: build and install libfragmentzip
       run: |
           echo "=== Building libfragmentzip ==="
 
-          git clone --depth 1 https://github.com/tihmstar/libfragmentzip.git /tmp/libfragmentzip
+          git clone https://github.com/tihmstar/libfragmentzip.git /tmp/libfragmentzip
           cd /tmp/libfragmentzip
+
+          echo "libfragmentzip git commit count:"
+          git rev-list --count HEAD
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
           ./autogen.sh --prefix=/usr/local
-
           make -j"$(sysctl -n hw.ncpu)"
-
           sudo make install
 
-          echo "=== Searching for libfragmentzip.pc ==="
-
-          find /usr/local /opt/homebrew \
-            -name 'libfragmentzip.pc' \
-            -print 2>/dev/null || true
-
           echo "=== Checking libfragmentzip ==="
-
           pkg-config --modversion libfragmentzip
           pkg-config --cflags libfragmentzip
           pkg-config --libs libfragmentzip
