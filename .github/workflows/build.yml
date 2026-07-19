@@ -172,7 +172,10 @@ jobs:
     - name: autogen
       run: |
           export CFLAGS="${{env.BUILD_CFLAGS}} -Wno-nullability-completeness -Wno-expansion-to-defined"
+          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+
           echo "Using CFLAGS: $CFLAGS"
+          echo "Using PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
           ./autogen.sh --with-turdusmerula \ PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/opt/homebrew/lib/pkgconfig" \
               libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
               libcurl_LIBS="-lcurl" \
