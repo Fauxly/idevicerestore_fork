@@ -17,13 +17,6 @@ jobs:
     - name: prepare environment
       run: |
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-    - name: fetch libirecovery
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libirecovery-latest_${{env.target_triplet}}
-        repo: libimobiledevice/libirecovery
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -68,17 +61,17 @@ jobs:
           rm -rf extract/lib
           sudo cp -r extract/* /
           sudo ldconfig
-    - name: build libgeneral
+    - name: build libirecovery
       run: |
-          git clone --recursive https://github.com/tihmstar/libgeneral
-          cd libgeneral
+          git clone --recursive https://github.com/turdus-m3rula/libirecovery
+          cd libirecovery
           ./autogen.sh
           make
           sudo make install
           sudo ldconfig
     - name: build libfragmentzip
       run: |
-          git clone https://github.com/tihmstar/libfragmentzip
+          git clone https://github.com/turdus-m3rula/libfragmentzip
           cd libfragmentzip
           ./autogen.sh
           make
@@ -109,18 +102,11 @@ jobs:
     - name: install dependencies
       run: |
          if test -x "`which port`"; then
-           sudo port install libtool autoconf automake pkgconfig zstd
+           sudo port install libtool autoconf automake pkgconfig zstd libusb libzip curl
          else
-           brew install libtool autoconf automake pkgconfig zstd
+           brew install libtool autoconf automake pkgconfig zstd libusb libzip curl
          fi
       shell: bash
-    - name: fetch libirecovery
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libirecovery-latest_macOS
-        repo: libimobiledevice/libirecovery
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -163,16 +149,16 @@ jobs:
             tar -C extract -xvf $I
           done
           sudo cp -r extract/* /
-    - name: build libgeneral
+    - name: build libirecovery
       run: |
-          git clone --recursive https://github.com/tihmstar/libgeneral
-          cd libgeneral
+          git clone --recursive https://github.com/turdus-m3rula/libirecovery
+          cd libirecovery
           ./autogen.sh
           make
           sudo make install
     - name: build libfragmentzip
       run: |
-          git clone https://github.com/tihmstar/libfragmentzip
+          git clone https://github.com/turdus-m3rula/libfragmentzip
           cd libfragmentzip
           ./autogen.sh
           make
@@ -259,19 +245,15 @@ jobs:
           mingw-w64-${{ matrix.arch }}-xz
           mingw-w64-${{ matrix.arch }}-bzip2
           mingw-w64-${{ matrix.arch }}-openssl
+          mingw-w64-${{ matrix.arch }}-libusb
+          mingw-w64-${{ matrix.arch }}-libzip
+          mingw-w64-${{ matrix.arch }}-curl
           pkg-config
     - name: prepare environment
       run: |
           dest=`echo ${{ matrix.msystem }} |tr [:upper:] [:lower:]`
           echo "dest=$dest" >> $GITHUB_ENV
           echo "target_triplet=`gcc -dumpmachine`" >> $GITHUB_ENV
-    - name: fetch libirecovery
-      uses: dawidd6/action-download-artifact@v6
-      with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        workflow: build.yml
-        name: libirecovery-latest_${{ matrix.arch }}-${{ env.dest }}
-        repo: libimobiledevice/libirecovery
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
       with:
@@ -314,16 +296,16 @@ jobs:
             tar -C extract -xvf $I
           done
           cp -r extract/* /
-    - name: build libgeneral
+    - name: build libirecovery
       run: |
-          git clone --recursive https://github.com/tihmstar/libgeneral
-          cd libgeneral
+          git clone --recursive https://github.com/turdus-m3rula/libirecovery
+          cd libirecovery
           ./autogen.sh --prefix=/${{env.dest}}
           make
           make install
     - name: build libfragmentzip
       run: |
-          git clone https://github.com/tihmstar/libfragmentzip
+          git clone https://github.com/turdus-m3rula/libfragmentzip
           cd libfragmentzip
           ./autogen.sh --prefix=/${{env.dest}}
           make
