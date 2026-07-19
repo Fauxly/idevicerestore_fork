@@ -176,6 +176,13 @@ jobs:
           cd /tmp/turdus-libirecovery
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+          export CFLAGS="${{env.BUILD_CFLAGS}}"
+          export CXXFLAGS="${{env.BUILD_CFLAGS}}"
+          export LDFLAGS="-arch arm64 -arch x86_64 -isysroot ${{env.SDKDIR}}"
+
+          echo "CFLAGS=$CFLAGS"
+          echo "CXXFLAGS=$CXXFLAGS"
+          echo "LDFLAGS=$LDFLAGS"
 
           ./autogen.sh --prefix=/usr/local
           make -j"$(sysctl -n hw.ncpu)"
@@ -184,6 +191,16 @@ jobs:
           echo "=== Checking installed Turdus libirecovery ==="
           pkg-config --modversion libirecovery-1.0
           grep -n -E 'IRECV_K_PONGO_MODE|irecv_pongo_send_buffer|irecv_usb_control_transfer_no_timeout_retval' /usr/local/include/libirecovery.h
+
+          echo "=== Checking libirecovery architectures ==="
+          LIBIRECOVERY_LIB="$(find /usr/local/lib -maxdepth 1 \( -name 'libirecovery-1.0.a' -o -name 'libirecovery-1.0.dylib' \) | head -n 1)"
+          if [ -z "$LIBIRECOVERY_LIB" ]; then
+            echo "ERROR: libirecovery library not found in /usr/local/lib"
+            exit 1
+          fi
+          echo "Checking: $LIBIRECOVERY_LIB"
+          lipo -info "$LIBIRECOVERY_LIB"
+          lipo -verify_arch arm64 x86_64 "$LIBIRECOVERY_LIB"
 
           echo "SUCCESS: Turdus libirecovery installed"
 
