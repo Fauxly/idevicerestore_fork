@@ -176,20 +176,23 @@ jobs:
           cd /tmp/turdus-libirecovery
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${PKG_CONFIG_PATH:-}"
-          export CFLAGS="${{env.BUILD_CFLAGS}}"
-          export CXXFLAGS="${{env.BUILD_CFLAGS}}"
-          export LDFLAGS="-arch arm64 -arch x86_64 -isysroot ${{env.SDKDIR}}"
+
+          SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
+          BUILD_CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
+
+          export SDKDIR
+          export BUILD_CFLAGS
+          export CFLAGS="${BUILD_CFLAGS}"
+          export CXXFLAGS="${BUILD_CFLAGS}"
+          export LDFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
 
           echo "CFLAGS=$CFLAGS"
           echo "CXXFLAGS=$CXXFLAGS"
           echo "LDFLAGS=$LDFLAGS"
 
-          ./autogen.sh --prefix=/usr/local || {
-          echo "========== CONFIG.LOG =========="
-          cat config.log
-          echo "========== END CONFIG.LOG =========="
-          exit 1
-          }
+          ./autogen.sh --prefix=/usr/local
+          make -j"$(sysctl -n hw.ncpu)"
+          sudo make install
 
           echo "=== Checking installed Turdus libirecovery ==="
           pkg-config --modversion libirecovery-1.0
