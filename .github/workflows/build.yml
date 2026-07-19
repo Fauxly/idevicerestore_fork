@@ -345,7 +345,9 @@ jobs:
       with:
         name: idevicerestore-latest_macOS
         path: idevicerestore.tar
-          build-windows:
+
+
+  build-windows:
     runs-on: windows-2019
     defaults:
       run:
