@@ -59,6 +59,13 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_${{env.target_triplet}}
         repo: libimobiledevice/libtatsu
+    - name: fetch libfragmentzip
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        workflow: build.yml
+        name: libfragmentzip-latest_${{env.target_triplet}}
+        repo: libimobiledevice/libfragmentzip
     - name: install external dependencies
       run: |
           mkdir extract
@@ -140,6 +147,13 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_macOS
         repo: libimobiledevice/libtatsu
+    - name: fetch libfragmentzip
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        workflow: build.yml
+        name: libfragmentzip-latest_macOS
+        repo: libimobiledevice/libfragmentzip
     - name: install external dependencies
       run: |
           mkdir extract
@@ -277,6 +291,13 @@ jobs:
         workflow: build.yml
         name: libtatsu-latest_${{ matrix.arch }}-${{ env.dest }}
         repo: libimobiledevice/libtatsu
+    - name: fetch libfragmentzip
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        workflow: build.yml
+        name: libfragmentzip-latest_${{ matrix.arch }}-${{ env.dest }}
+        repo: libimobiledevice/libfragmentzip
     - name: install external dependencies
       run: |
           mkdir extract
