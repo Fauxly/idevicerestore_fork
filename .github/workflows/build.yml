@@ -25,7 +25,7 @@ jobs:
         github_token: ${{secrets.GITHUB_TOKEN}}
         workflow: build.yml
         name: libirecovery-latest_${{env.target_triplet}}
-        repo: libimobiledevice/libirecovery
+        repo: turdus-m3rula/libirecovery
 
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
@@ -122,7 +122,7 @@ jobs:
         github_token: ${{secrets.GITHUB_TOKEN}}
         workflow: build.yml
         name: libirecovery-latest_macOS
-        repo: libimobiledevice/libirecovery
+        repo: turdus-m3rula/libirecovery
 
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
@@ -405,7 +405,7 @@ jobs:
         github_token: ${{secrets.GITHUB_TOKEN}}
         workflow: build.yml
         name: libirecovery-latest_${{ matrix.arch }}-${{ env.dest }}
-        repo: libimobiledevice/libirecovery
+        repo: turdus-m3rula/libirecovery
 
     - name: fetch libplist
       uses: dawidd6/action-download-artifact@v6
