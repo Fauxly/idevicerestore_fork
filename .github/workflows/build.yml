@@ -626,11 +626,11 @@ jobs:
     - name: autogen
       run: |
           echo "=== Preparing pkg-config macros for Autoconf ==="
-                export ACLOCAL_PATH="/mingw32/share/aclocal:/usr/share/aclocal:${ACLOCAL_PATH:-}"
-                export PKG_CONFIG_PATH="/mingw32/lib/pkgconfig:/mingw32/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+                export ACLOCAL_PATH="${MINGW_PREFIX}/share/aclocal:/usr/share/aclocal:${ACLOCAL_PATH:-}"
+                export PKG_CONFIG_PATH="${MINGW_PREFIX}/lib/pkgconfig:${MINGW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
                 command -v pkg-config
                 pkg-config --version
-                PKG_M4="$(find /mingw32/share/aclocal /usr/share/aclocal -name pkg.m4 -print -quit 2>/dev/null || true)"
+                PKG_M4="$(find "${MINGW_PREFIX}/share/aclocal" /usr/share/aclocal -name pkg.m4 -print -quit 2>/dev/null || true)"
                 if [ -z "$PKG_M4" ]; then
                   echo "ERROR: pkg.m4 not found"
                   exit 1
