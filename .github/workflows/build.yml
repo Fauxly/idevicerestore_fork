@@ -103,9 +103,11 @@ jobs:
           make
           echo "=== Runtime linkage check ==="
           BIN="$(find src -maxdepth 2 -type f -name idevicerestore | head -n 1)"
+          
           if [ -n "$BIN" ]; then
-            otool -L "$BIN"
-            if otool -L "$BIN" | grep -q "libirecovery"; then
+            ldd "$BIN"
+            
+            if ldd "$BIN" | grep -q "libirecovery"; then
               echo "ERROR: idevicerestore still dynamically depends on libirecovery"
               exit 1
             fi
