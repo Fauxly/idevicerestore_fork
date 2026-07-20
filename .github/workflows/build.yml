@@ -96,8 +96,13 @@ jobs:
           done
 
     - name: autogen
-      run: ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+      run: |
+       export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
+       ./autogen.sh \
+        libirecovery_CFLAGS="-I/usr/local/include" \
+        libirecovery_LIBS="/usr/local/lib/libirecovery-1.0.a -lusb-1.0"
+        
     - name: make
       run: |
           make
