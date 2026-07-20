@@ -626,7 +626,9 @@ jobs:
     - name: autogen
       run: |
           echo "=== Installing and preparing pkgconf for Autoconf ==="
-          pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-pkgconf"
+          pacman -S --noconfirm --needed \
+                 "${MINGW_PACKAGE_PREFIX}-pkgconf" \
+                 "${MINGW_PACKAGE_PREFIX}-openssl"
 
           export ACLOCAL_PATH="${MINGW_PREFIX}/share/aclocal:/usr/share/aclocal:${ACLOCAL_PATH:-}"
           export PKG_CONFIG_PATH="${MINGW_PREFIX}/lib/pkgconfig:${MINGW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
