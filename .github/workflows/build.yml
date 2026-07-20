@@ -420,7 +420,7 @@ jobs:
           pkg-config --modversion libfragmentzip
 
           export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
-          export libirecovery_LIBS="/usr/local/lib/libirecovery-1.0.a"
+          export libirecovery_LIBS="/usr/local/lib/libirecovery-1.0.a -framework IOKit -framework CoreFoundation"
           export libzstd_LIBS="/usr/local/lib/libzstd.a"
           export libfragmentzip_LIBS="/usr/local/lib/libfragmentzip.a"
           export libgeneral_LIBS="/usr/local/lib/libgeneral.a"
