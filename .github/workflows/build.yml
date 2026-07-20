@@ -625,8 +625,21 @@ jobs:
 
     - name: autogen
       run: |
-          ./autogen.sh CC=gcc CXX=g++ \
-              libzip_VERSION=1.7.1 \
+          echo "=== Preparing pkg-config macros for Autoconf ==="
+                export ACLOCAL_PATH="/mingw32/share/aclocal:/usr/share/aclocal:${ACLOCAL_PATH:-}"
+                export PKG_CONFIG_PATH="/mingw32/lib/pkgconfig:/mingw32/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+                command -v pkg-config
+                pkg-config --version
+                PKG_M4="$(find /mingw32/share/aclocal /usr/share/aclocal -name pkg.m4 -print -quit 2>/dev/null || true)"
+                if [ -z "$PKG_M4" ]; then
+                  echo "ERROR: pkg.m4 not found"
+                  exit 1
+                fi
+                echo "Using pkg.m4: $PKG_M4"
+                mkdir -p m4
+                cp "$PKG_M4" m4/pkg.m4
+
+                ./autogen.sh CC=gcc CXX=g++ \              libzip_VERSION=1.7.1 \
               libzip_CFLAGS="${{env.LIBZIP_CFLAGS}}" \
               libzip_LIBS="${{env.LIBZIP_LIBS}}" \
               zlib_LIBS="/${{env.dest}}/lib/libz.a" \
