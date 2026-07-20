@@ -203,9 +203,13 @@ jobs:
       run: |
           echo "=== Building Turdus Merula libirecovery ==="
 
-          git clone --depth 1 --branch dev/sephaxx \
-            https://github.com/turdus-m3rula/libirecovery.git \
+          git clone --depth 1 \
+             https://github.com/turdus-m3rula/libirecovery.git \
             /tmp/turdus-libirecovery
+          test -f include/libirecovery.h || {
+            echo "ERROR: cloned source is not libirecovery"
+            exit 1
+          }
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${PKG_CONFIG_PATH:-}"
 
