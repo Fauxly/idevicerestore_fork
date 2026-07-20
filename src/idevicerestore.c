@@ -1455,6 +1455,17 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 			int module_unsupported = 0;
 			uint64_t vflag = convert_cpid_bdid_to_plat_vflag(client->cpid, client->bdid);
 			int is_tvos = is_tvos_with_cpid_bdid(client->cpid, client->bdid);
+
+	        logger(LL_INFO, "=== Module compatibility flags ===\n");
+            logger(LL_INFO, "CPID:           0x%04x\n", client->cpid);
+            logger(LL_INFO, "BDID:           0x%02x\n", client->bdid);
+            logger(LL_INFO, "is_tvos:        %d\n", is_tvos);
+            logger(LL_INFO, "Expected vflag: 0x%016" PRIx64 "\n", vflag);
+            logger(LL_INFO, "RAMDisk flag:   0x%016" PRIx64 "\n", client->ramdisk_flag);
+            logger(LL_INFO, "CPF flag:       0x%016" PRIx64 "\n", client->cpf_flag);
+            logger(LL_INFO, "KPF flag:       0x%016" PRIx64 "\n", client->kpf_flag);
+            logger(LL_INFO, "SEP Racer flag: 0x%016" PRIx64 "\n", client->sep_racer_flag);
+            logger(LL_INFO, "==================================\n");
 			if (is_tvos == -1) {
 				logger(LL_ERROR, "Unknown bdid (BDID: 0x%02x)\n", (uint8_t)client->bdid);
 				module_unsupported = 1;
