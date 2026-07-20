@@ -2250,28 +2250,25 @@ fragmentzip_close(fragment); \
 return -1; \
 } \
 plist_get_string_val(_node, &value); \
-logger(LL_INFO, "Downloading %s\n", value); \
-char* tmp_buf = NULL; \
+logger(LL_INFO, "Loading %s from local IPSW\n", value); \
+void* tmp_buf = NULL; \
 size_t tmp_len = 0; \
-if (fragmentzip_download_to_memory(fragment, value, &tmp_buf, &tmp_len, fragmentzip_callback)) { \
-logger(LL_ERROR, "Could not find %s\n", value); \
-if (fragment) { \
-fragmentzip_close(fragment); \
+if (ipsw_extract_to_memory(client->ipsw, value, &tmp_buf, &tmp_len) < 0) { \
+	logger(LL_ERROR, "Could not extract %s from local IPSW\n", value); \
+	free(value); \
+	return -1; \
 } \
-free(value); \
-return -1; \
-} \
-if (!tmp_buf) { \
-logger(LL_ERROR, "Could not allocate %s buffer\n", value); \
-if (fragment) { \
-fragmentzip_close(fragment); \
-} \
-free(value); \
-return -1; \
+if (!tmp_buf || tmp_len == 0) { \
+	logger(LL_ERROR, "Invalid or empty component %s\n", value); \
+	free(tmp_buf); \
+	free(value); \
+	return -1; \
 } \
 client->t_##name.im4p.data = (uint8_t *)tmp_buf; \
 client->t_##name.im4p.length = tmp_len; \
-logger(LL_DEBUG, "%s length: %zu\n", #name, client->t_##name.im4p.length); \
+logger(LL_INFO, "Loaded %s from local IPSW (%zu bytes)\n", #name, tmp_len); \
+free(value); \
+value = NULL; \
 }
 				char* value = NULL;
 				plist_t manifest_node = NULL;
