@@ -639,7 +639,8 @@ jobs:
                 mkdir -p m4
                 cp "$PKG_M4" m4/pkg.m4
 
-                ./autogen.sh CC=gcc CXX=g++ \              libzip_VERSION=1.7.1 \
+                ./autogen.sh CC=gcc CXX=g++ \
+      libzip_VERSION=1.7.1 \
               libzip_CFLAGS="${{env.LIBZIP_CFLAGS}}" \
               libzip_LIBS="${{env.LIBZIP_LIBS}}" \
               zlib_LIBS="/${{env.dest}}/lib/libz.a" \
