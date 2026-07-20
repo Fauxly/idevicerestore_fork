@@ -559,14 +559,30 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 		logger_dump_hex(LL_INFO, client->nonce, client->nonce_size);
 
 		if (nonce_changed && !(client->flags & FLAG_CUSTOM)) {
-			// Welcome iOS5. We have to re-request the TSS with our nonce.
-			plist_free(client->tss);
+			// ApNonce changed after iBSS. Cached TSS tickets are now stale.
+			logger(LL_INFO, "ApNonce changed after iBSS, refreshing TSS\\n");
+
+#ifdef HAVE_TURDUS_MERULA
+			if ((client->flags & FLAG_TETHERED) || (client->flags & FLAG_FETCH_BSEP)) {
+				if (client->base.tss) {
+					logger(LL_INFO, "Discarding cached Base SHSH due to changed ApNonce\\n");
+					plist_free(client->base.tss);
+					client->base.tss = NULL;
+				}
+			}
+#endif
+
+			if (client->tss) {
+				plist_free(client->tss);
+				client->tss = NULL;
+			}
+
 			if (get_tss_response(client, build_identity, &client->tss) < 0) {
-				logger(LL_ERROR, "Unable to get SHSH blobs for this device\n");
+				logger(LL_ERROR, "Unable to get SHSH blobs for this device\\n");
 				return -1;
 			}
 			if (!client->tss) {
-				logger(LL_ERROR, "can't continue without TSS\n");
+				logger(LL_ERROR, "can't continue without TSS\\n");
 				return -1;
 			}
 			fixup_tss(client->tss);
