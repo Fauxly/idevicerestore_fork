@@ -522,6 +522,9 @@ jobs:
           base-devel
           git
           mingw-w64-${{ matrix.arch }}-gcc
+          mingw-w64-${{ matrix.arch }}-bzip2
+          mingw-w64-${{ matrix.arch }}-xz
+          mingw-w64-${{ matrix.arch }}-zlib
           make
           libtool
           autoconf
