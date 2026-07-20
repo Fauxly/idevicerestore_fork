@@ -201,18 +201,18 @@ jobs:
 
     - name: build and install Turdus libirecovery
       run: |
-          echo "=== Building Turdus Merula libirecovery ==="
+        echo "=== Building Turdus Merula libirecovery ==="
 
-          git clone --depth 1 --branch 1.3.1 \
-            https://github.com/libimobiledevice/libirecovery.git \
-            /tmp/turdus-libirecovery
+        git clone --depth 1 --branch merula-1.3.1 \
+          https://github.com/Fauxly/libirecovery-merula.git \
+          /tmp/turdus-libirecovery
 
-          cd /tmp/turdus-libirecovery
+        cd /tmp/turdus-libirecovery
              
-          test -f include/libirecovery.h || {
-            echo "ERROR: cloned source is not libirecovery"
-            exit 1
-          }
+        test -f include/libirecovery.h || {
+          echo "ERROR: cloned source is not libirecovery"
+          exit 1
+        }
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${PKG_CONFIG_PATH:-}"
 
