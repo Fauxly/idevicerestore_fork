@@ -625,21 +625,31 @@ jobs:
 
     - name: autogen
       run: |
-          echo "=== Preparing pkg-config macros for Autoconf ==="
-                export ACLOCAL_PATH="${MINGW_PREFIX}/share/aclocal:/usr/share/aclocal:${ACLOCAL_PATH:-}"
-                export PKG_CONFIG_PATH="${MINGW_PREFIX}/lib/pkgconfig:${MINGW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
-                command -v pkg-config
-                pkg-config --version
-                PKG_M4="$(find "${MINGW_PREFIX}/share/aclocal" /usr/share/aclocal -name pkg.m4 -print -quit 2>/dev/null || true)"
-                if [ -z "$PKG_M4" ]; then
-                  echo "ERROR: pkg.m4 not found"
-                  exit 1
-                fi
-                echo "Using pkg.m4: $PKG_M4"
-                mkdir -p m4
-                cp "$PKG_M4" m4/pkg.m4
+          echo "=== Installing and preparing pkgconf for Autoconf ==="
+          pacman -S --noconfirm --needed "${MINGW_PACKAGE_PREFIX}-pkgconf"
 
-                ./autogen.sh CC=gcc CXX=g++ \
+          export ACLOCAL_PATH="${MINGW_PREFIX}/share/aclocal:/usr/share/aclocal:${ACLOCAL_PATH:-}"
+          export PKG_CONFIG_PATH="${MINGW_PREFIX}/lib/pkgconfig:${MINGW_PREFIX}/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+
+          PKG_CONFIG_BIN="$(command -v pkg-config || command -v pkgconf || true)"
+          if [ -z "$PKG_CONFIG_BIN" ]; then
+            echo "ERROR: pkg-config/pkgconf not found after installation"
+            exit 1
+          fi
+          export PKG_CONFIG="$PKG_CONFIG_BIN"
+          echo "Using pkg-config: $PKG_CONFIG"
+          "$PKG_CONFIG" --version
+
+          PKG_M4="$(find "${MINGW_PREFIX}/share/aclocal" /usr/share/aclocal /usr/local/share/aclocal -name pkg.m4 -print -quit 2>/dev/null || true)"
+          if [ -z "$PKG_M4" ]; then
+            echo "ERROR: pkg.m4 not found after pkgconf installation"
+            exit 1
+          fi
+          echo "Using pkg.m4: $PKG_M4"
+          mkdir -p m4
+          cp "$PKG_M4" m4/pkg.m4
+
+          ./autogen.sh CC=gcc CXX=g++ \
               libzip_VERSION=1.7.1 \
               libzip_CFLAGS="${{env.LIBZIP_CFLAGS}}" \
               libzip_LIBS="${{env.LIBZIP_LIBS}}" \
