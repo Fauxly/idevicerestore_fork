@@ -203,8 +203,8 @@ jobs:
       run: |
           echo "=== Building Turdus Merula libirecovery ==="
 
-          git clone --depth 1 \
-            https://github.com/turdus-m3rula/libirecovery.git \
+          git clone --depth 1 --branch 1.3.1 \
+            https://github.com/libimobiledevice/libirecovery.git \
             /tmp/turdus-libirecovery
 
           cd /tmp/turdus-libirecovery
