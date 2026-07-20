@@ -99,7 +99,17 @@ jobs:
       run: ./autogen.sh PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
     - name: make
-      run: make
+      run: |
+          make
+          echo "=== Runtime linkage check ==="
+          BIN="$(find src -maxdepth 2 -type f -name idevicerestore | head -n 1)"
+          if [ -n "$BIN" ]; then
+            otool -L "$BIN"
+            if otool -L "$BIN" | grep -q "libirecovery"; then
+              echo "ERROR: idevicerestore still dynamically depends on libirecovery"
+              exit 1
+            fi
+          fi
 
     - name: make install
       run: sudo make install
@@ -191,6 +201,7 @@ jobs:
 
           export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig:${PKG_CONFIG_PATH:-}"
 
+          export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
           SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
           BUILD_CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
 
@@ -232,6 +243,7 @@ jobs:
           git clone --depth 1 https://github.com/facebook/zstd.git /tmp/zstd
           cd /tmp/zstd
 
+          export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
           SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
           UNIVERSAL_CFLAGS="-O2 -arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
 
@@ -276,6 +288,7 @@ jobs:
 
     - name: build and install libgeneral
       run: |
+          export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
           SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
           export CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
           export CXXFLAGS="$CFLAGS"
@@ -303,6 +316,7 @@ jobs:
 
     - name: build and install libfragmentzip
       run: |
+          export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
           SDKDIR="$(xcrun --sdk macosx --show-sdk-path)"
           export CFLAGS="-arch arm64 -arch x86_64 -isysroot ${SDKDIR}"
           export CXXFLAGS="$CFLAGS"
@@ -405,6 +419,12 @@ jobs:
 
           pkg-config --modversion libfragmentzip
 
+          export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.0}"
+          export libirecovery_LIBS="/usr/local/lib/libirecovery-1.0.a"
+          export libzstd_LIBS="/usr/local/lib/libzstd.a"
+          export libfragmentzip_LIBS="/usr/local/lib/libfragmentzip.a"
+          export libgeneral_LIBS="/usr/local/lib/libgeneral.a"
+
           ./autogen.sh --with-turdusmerula \
               libcurl_CFLAGS="-I${{env.SDKDIR}}/usr/include" \
               libcurl_LIBS="-lcurl" \
@@ -472,7 +492,7 @@ jobs:
 
 
   build-windows:
-    runs-on: windows-2022
+    runs-on: windows-2019
     defaults:
       run:
         shell: msys2 {0}
