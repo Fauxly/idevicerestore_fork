@@ -263,6 +263,7 @@ if (irecv_getenv(client->dfu->client, "build-style", &build_style) == IRECV_E_SU
 
 free(data);
 return 0;
+}
 
 int dfu_get_bdid(struct idevicerestore_client_t* client, unsigned int* bdid)
 {
