@@ -706,7 +706,8 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 				client->dfu->client = NULL;
 				return -1;
 			}
-			if (have_arm64_single_stage_iboot(client->cpid)) {
+			if (have_arm64_single_stage_iboot(client->cpid) &&
+                strncmp(client->device->product_type, "AppleTV", 7) != 0) {
 				if (!is_recovery) {
 					mutex_unlock(&client->device_event_mutex);
 					if (!(client->flags & FLAG_QUIT)) {
