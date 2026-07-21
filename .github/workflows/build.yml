@@ -208,6 +208,22 @@ jobs:
           /tmp/turdus-libirecovery
 
         cd /tmp/turdus-libirecovery
+
+                  echo "========================================"
+          echo "Turdus libirecovery source information"
+          echo "========================================"
+          echo "Repository:"
+          git remote -v
+          echo
+          echo "Branch:"
+          git branch --show-current
+          echo
+          echo "Commit SHA:"
+          git rev-parse HEAD
+          echo
+          echo "Latest commit:"
+          git log -1 --oneline
+          echo "========================================"
              
         test -f include/libirecovery.h || {
           echo "ERROR: cloned source is not libirecovery"
