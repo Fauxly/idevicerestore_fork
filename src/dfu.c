@@ -845,6 +845,43 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 
 	logger(LL_DEBUG, "Waiting for device to reconnect in recovery mode...\n");
 	cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, waitsec);
+
+#ifdef HAVE_TURDUS_MERULA
+	logger(LL_INFO, "=== Post-iBEC reconnect diagnostics ===\n");
+	logger(LL_INFO, "Mode after iBEC reconnect: %d\n", client->mode);
+
+	if (client->mode == MODE_DFU) {
+		logger(LL_INFO, "Device returned to DFU after iBEC\n");
+
+		if (dfu_client_new(client) == 0 && client->dfu && client->dfu->client) {
+			const struct irecv_device_info *info =
+				irecv_get_device_info(client->dfu->client);
+
+			if (info) {
+				logger(LL_INFO, "Post-iBEC CPID: 0x%04x\n", info->cpid);
+				logger(LL_INFO, "Post-iBEC BDID: 0x%02x\n", info->bdid);
+				logger(LL_INFO, "Post-iBEC IBFL: 0x%x\n", info->ibfl);
+
+				if (info->serial_string) {
+					logger(LL_INFO, "Post-iBEC Serial: %s\n",
+						info->serial_string);
+				}
+			} else {
+				logger(LL_INFO, "Post-iBEC device info unavailable\n");
+			}
+		} else {
+			logger(LL_INFO, "Unable to create DFU client after iBEC reconnect\n");
+		}
+	} else if (client->mode == MODE_RECOVERY) {
+		logger(LL_INFO, "SUCCESS: Device entered Recovery after iBEC\n");
+	} else {
+		logger(LL_INFO, "Device returned in unexpected mode: %d\n",
+			client->mode);
+	}
+
+	logger(LL_INFO, "=======================================\n");
+#endif
+
 	if (client->mode != MODE_RECOVERY || (client->flags & FLAG_QUIT)) {
 		mutex_unlock(&client->device_event_mutex);
 		if (!(client->flags & FLAG_QUIT)) {
