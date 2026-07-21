@@ -233,18 +233,36 @@ int dfu_send_component(struct idevicerestore_client_t* client, plist_t build_ide
 
 	logger(LL_INFO, "Sending %s (%zu bytes)...\n", component, size);
 
-	register_progress('DFUP', "Uploading");
-	irecv_error_t err = irecv_send_buffer(client->dfu->client, data, size, IRECV_SEND_OPT_DFU_NOTIFY_FINISH);
-	finalize_progress('DFUP');
-	if (err != IRECV_E_SUCCESS) {
-		logger(LL_ERROR, "Unable to send %s component: %s\n", component, irecv_strerror(err));
-		free(data);
-		return -1;
-	}
+register_progress('DFUP', "Uploading");
+irecv_error_t err = irecv_send_buffer(client->dfu->client, data, size, IRECV_SEND_OPT_DFU_NOTIFY_FINISH);
+finalize_progress('DFUP');
 
-	free(data);
-	return 0;
+if (err != IRECV_E_SUCCESS) {
+    logger(LL_ERROR, "Unable to send %s component: %s\n", component, irecv_strerror(err));
+    free(data);
+    return -1;
 }
+
+logger(LL_INFO, "Upload finished, checking device state...\n");
+
+char *boot_stage = NULL;
+if (irecv_getenv(client->dfu->client, "boot-stage", &boot_stage) == IRECV_E_SUCCESS && boot_stage) {
+    logger(LL_INFO, "boot-stage=%s\n", boot_stage);
+    free(boot_stage);
+} else {
+    logger(LL_INFO, "boot-stage unavailable\n");
+}
+
+char *build_style = NULL;
+if (irecv_getenv(client->dfu->client, "build-style", &build_style) == IRECV_E_SUCCESS && build_style) {
+    logger(LL_INFO, "build-style=%s\n", build_style);
+    free(build_style);
+} else {
+    logger(LL_INFO, "build-style unavailable\n");
+}
+
+free(data);
+return 0;
 
 int dfu_get_bdid(struct idevicerestore_client_t* client, unsigned int* bdid)
 {
