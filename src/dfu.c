@@ -245,6 +245,26 @@ if (err != IRECV_E_SUCCESS) {
 
 logger(LL_INFO, "Upload finished, checking device state...\n");
 
+if (!strcmp(component, "iBEC")) {
+    const struct irecv_device_info *info =
+        irecv_get_device_info(client->dfu->client);
+
+    logger(LL_INFO, "=== iBEC post-upload diagnostics ===\n");
+
+    if (info) {
+        logger(LL_INFO, "CPID: 0x%04x\n", info->cpid);
+        logger(LL_INFO, "BDID: 0x%02x\n", info->bdid);
+
+        if (info->serial_string) {
+            logger(LL_INFO, "Serial: %s\n", info->serial_string);
+        }
+    } else {
+        logger(LL_INFO, "Device info unavailable after iBEC upload\n");
+    }
+
+    logger(LL_INFO, "====================================\n");
+}
+
 char *boot_stage = NULL;
 if (irecv_getenv(client->dfu->client, "boot-stage", &boot_stage) == IRECV_E_SUCCESS && boot_stage) {
     logger(LL_INFO, "boot-stage=%s\n", boot_stage);
@@ -579,12 +599,12 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 
 		if (nonce_changed && !(client->flags & FLAG_CUSTOM)) {
 			// ApNonce changed after iBSS. Cached TSS tickets are now stale.
-			logger(LL_INFO, "ApNonce changed after iBSS, refreshing TSS\\n");
+			logger(LL_INFO, "ApNonce changed after iBSS, refreshing TSS\n");
 
 #ifdef HAVE_TURDUS_MERULA
 			if ((client->flags & FLAG_TETHERED) || (client->flags & FLAG_FETCH_BSEP)) {
 				if (client->base.tss) {
-					logger(LL_INFO, "Discarding cached Base SHSH due to changed ApNonce\\n");
+					logger(LL_INFO, "Discarding cached Base SHSH due to changed ApNonce\n");
 					plist_free(client->base.tss);
 					client->base.tss = NULL;
 				}
@@ -597,11 +617,11 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 			}
 
 			if (get_tss_response(client, build_identity, &client->tss) < 0) {
-				logger(LL_ERROR, "Unable to get SHSH blobs for this device\\n");
+				logger(LL_ERROR, "Unable to get SHSH blobs for this device\n");
 				return -1;
 			}
 			if (!client->tss) {
-				logger(LL_ERROR, "can't continue without TSS\\n");
+				logger(LL_ERROR, "can't continue without TSS\n");
 				return -1;
 			}
 			fixup_tss(client->tss);
