@@ -206,6 +206,34 @@ int dfu_send_component(struct idevicerestore_client_t* client, plist_t build_ide
 	component_data = NULL;
 
 #ifdef HAVE_TURDUS_MERULA
+	if (!strcmp(component, "iBEC")) {
+		const char *dump_path = "/tmp/idevicerestore-personalized-iBEC.img4";
+
+		logger(LL_INFO, "=== Personalized iBEC diagnostics ===\n");
+		logger(LL_INFO, "Personalized iBEC size: %zu bytes\n", size);
+		logger(LL_INFO, "TSS pointer used for iBEC: %p\n", (void *)tss);
+		logger(LL_INFO, "client->tss: %p\n", (void *)client->tss);
+		logger(LL_INFO, "client->base.tss: %p\n", (void *)client->base.tss);
+
+		if (tss == client->tss) {
+			logger(LL_INFO, "iBEC is using client->tss\n");
+		} else if (tss == client->base.tss) {
+			logger(LL_INFO, "iBEC is using client->base.tss\n");
+		} else {
+			logger(LL_INFO, "iBEC is using another TSS object\n");
+		}
+
+		if (write_file(dump_path, data, size) < 0) {
+			logger(LL_ERROR, "Failed to dump personalized iBEC to %s\n", dump_path);
+		} else {
+			logger(LL_INFO, "Personalized iBEC dumped to: %s\n", dump_path);
+		}
+
+		logger(LL_INFO, "=====================================\n");
+	}
+#endif
+
+#ifdef HAVE_TURDUS_MERULA
 	uint64_t mask_flag = FLAG_CUSTOM | FLAG_DOWNGRADE;
 #else
 	uint64_t mask_flag = FLAG_CUSTOM;
