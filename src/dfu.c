@@ -288,6 +288,30 @@ if (err != IRECV_E_SUCCESS) {
     return -1;
 }
 
+if (!strcmp(component, "iBSS")) {
+    logger(LL_INFO, "=== iBSS environment diagnostics ===\n");
+
+    char *ibss_version = NULL;
+    irecv_error_t env_err = irecv_getenv(client->dfu->client, "build-version", &ibss_version);
+    logger(LL_INFO, "irecv_getenv(build-version) = %d\n", env_err);
+
+    if (env_err == IRECV_E_SUCCESS && ibss_version) {
+        logger(LL_INFO, "build-version=%s\n", ibss_version);
+        free(ibss_version);
+    }
+
+    char *ibss_product = NULL;
+    env_err = irecv_getenv(client->dfu->client, "product", &ibss_product);
+    logger(LL_INFO, "irecv_getenv(product) = %d\n", env_err);
+
+    if (env_err == IRECV_E_SUCCESS && ibss_product) {
+        logger(LL_INFO, "product=%s\n", ibss_product);
+        free(ibss_product);
+    }
+
+    logger(LL_INFO, "====================================\n");
+}
+
 logger(LL_INFO, "Upload finished, checking device state...\n");
 
 if (!strcmp(component, "iBEC")) {
