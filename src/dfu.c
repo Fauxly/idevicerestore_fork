@@ -546,7 +546,9 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 {
 	int mode = 0;
 
-	int waitsec = 10000;
+const int disconnect_timeout_ms = 10000;
+const int reconnect_timeout_ms = 60000;
+
 #ifdef HAVE_TURDUS_MERULA
 	int is_recovery = 0;
 #endif
@@ -577,7 +579,7 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 	if (client->build_major > 8) {
 		/* reconnect */
 		logger(LL_DEBUG, "Waiting for device to disconnect...\n");
-		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 10000);
+		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, disconnect_timeout_ms);
 		if (client->mode != MODE_UNKNOWN || (client->flags & FLAG_QUIT)) {
 			mutex_unlock(&client->device_event_mutex);
 			if (!(client->flags & FLAG_QUIT)) {
@@ -586,7 +588,7 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 			return -1;
 		}
 		logger(LL_DEBUG, "Waiting for device to reconnect...\n");
-		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 10000);
+		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, reconnect_timeout_ms);
 		if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) || (client->flags & FLAG_QUIT)) {
 			mutex_unlock(&client->device_event_mutex);
 			if (!(client->flags & FLAG_QUIT)) {
