@@ -647,6 +647,16 @@ logger(LL_INFO,
 if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
     (client->flags & FLAG_QUIT)) {
 
+#ifdef HAVE_TURDUS_MERULA
+    if (!(client->flags & FLAG_QUIT) &&
+        (client->flags & FLAG_DOWNGRADE) &&
+        have_arm64_second_stage_iboot(client->cpid) &&
+        client->mode == MODE_NORMAL) {
+        logger(LL_INFO, "Device booted into Normal mode after iBSS — expected for tethered downgrade on this chip.\n");
+        goto wait_yolo_dfu;
+    }
+#endif
+
     mutex_unlock(&client->device_event_mutex);
 
     if (!(client->flags & FLAG_QUIT)) {
@@ -890,6 +900,8 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 	}
 
 #ifdef HAVE_TURDUS_MERULA
+wait_yolo_dfu:
+	;
 	int retry = 0;
 	if ((client->flags & FLAG_DOWNGRADE) && have_arm64_second_stage_iboot(client->cpid)) {
 		logger(LL_DEBUG, "Waiting for device to reconnect in yolo (checkra1n) DFU mode...\n");
@@ -899,7 +911,7 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 		if (client->mode != MODE_DFU || (client->flags & FLAG_QUIT)) {
 			mutex_unlock(&client->device_event_mutex);
 			if (!(client->flags & FLAG_QUIT)) {
-				logger(LL_ERROR, "Device did not reconnect in yolo (checkra1n) DFU mode. Possibly invalid %s. Reset device and try again.\n", (client->build_major > 8) ? "iBEC" : "iBSS");
+				logger(LL_ERROR, "Device did not reconnect in yolo (checkra1n) DFU mode. Reset device and try again.\n");
 			}
 			return -1;
 		}
