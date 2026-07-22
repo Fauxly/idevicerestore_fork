@@ -205,6 +205,23 @@ int dfu_send_component(struct idevicerestore_client_t* client, plist_t build_ide
 	free(component_data);
 	component_data = NULL;
 
+	if (!strcmp(component, "iBSS")) {
+    const char *dump_path = "/tmp/idevicerestore-personalized-iBSS.img4";
+
+    logger(LL_INFO, "=== Personalized iBSS diagnostics ===\n");
+    logger(LL_INFO, "Personalized iBSS size: %zu bytes\n", size);
+    logger(LL_INFO, "TSS pointer used for iBSS: %p\n", (void *)tss);
+
+    FILE *fp = fopen(dump_path, "wb");
+    if (fp) {
+        fwrite(data, 1, size, fp);
+        fclose(fp);
+        logger(LL_INFO, "Personalized iBSS dumped to %s\n", dump_path);
+    } else {
+        logger(LL_ERROR, "Failed to dump personalized iBSS\n");
+    }
+}
+
 #ifdef HAVE_TURDUS_MERULA
 	if (!strcmp(component, "iBEC")) {
 		const char *dump_path = "/tmp/idevicerestore-personalized-iBEC.img4";
