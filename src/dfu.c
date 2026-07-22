@@ -546,8 +546,9 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 {
 	int mode = 0;
 
-const int disconnect_timeout_ms = 10000;
-const int reconnect_timeout_ms = 60000;
+	int waitsec = 10000;
+	const int disconnect_timeout_ms = 10000;
+	const int reconnect_timeout_ms = 60000;
 
 #ifdef HAVE_TURDUS_MERULA
 	int is_recovery = 0;
@@ -577,25 +578,32 @@ const int reconnect_timeout_ms = 60000;
 	dfu_client_free(client);
 
 	if (client->build_major > 8) {
-		/* reconnect */
-		logger(LL_DEBUG, "Waiting for device to disconnect...\n");
-		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, disconnect_timeout_ms);
-		if (client->mode != MODE_UNKNOWN || (client->flags & FLAG_QUIT)) {
-			mutex_unlock(&client->device_event_mutex);
-			if (!(client->flags & FLAG_QUIT)) {
-				logger(LL_ERROR, "Device did not disconnect. Possibly invalid iBSS. Reset device and try again.\n");
-			}
-			return -1;
+	/* reconnect */
+	logger(LL_DEBUG, "Waiting for device to disconnect...\n");
+	cond_wait_timeout(&client->device_event_cond,
+		&client->device_event_mutex, disconnect_timeout_ms);
+
+	if (client->mode != MODE_UNKNOWN || (client->flags & FLAG_QUIT)) {
+		mutex_unlock(&client->device_event_mutex);
+		if (!(client->flags & FLAG_QUIT)) {
+			logger(LL_ERROR, "Device did not disconnect. Possibly invalid iBSS. Reset device and try again.\n");
 		}
-		logger(LL_DEBUG, "Waiting for device to reconnect...\n");
-		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, reconnect_timeout_ms);
-		if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) || (client->flags & FLAG_QUIT)) {
-			mutex_unlock(&client->device_event_mutex);
-			if (!(client->flags & FLAG_QUIT)) {
-				logger(LL_ERROR, "Device did not reconnect in DFU or recovery mode. Possibly invalid iBSS. Reset device and try again.\n");
-			}
-			return -1;
+		return -1;
+	}
+
+	logger(LL_DEBUG, "Waiting for device to reconnect...\n");
+	cond_wait_timeout(&client->device_event_cond,
+		&client->device_event_mutex, reconnect_timeout_ms);
+
+	if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
+		(client->flags & FLAG_QUIT)) {
+		mutex_unlock(&client->device_event_mutex);
+		if (!(client->flags & FLAG_QUIT)) {
+			logger(LL_ERROR, "Device did not reconnect in DFU or recovery mode. Possibly invalid iBSS. Reset device and try again.\n");
 		}
+		return -1;
+	}
+}
 #ifdef HAVE_TURDUS_MERULA
 		if (client->mode == MODE_RECOVERY) {
 			is_recovery = 1;
