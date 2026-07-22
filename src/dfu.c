@@ -602,12 +602,11 @@ int dfu_enter_recovery(struct idevicerestore_client_t* client, plist_t build_ide
 			logger(LL_ERROR, "Device did not reconnect in DFU or recovery mode. Possibly invalid iBSS. Reset device and try again.\n");
 		}
 		return -1;
-	}
-}
+    }
 #ifdef HAVE_TURDUS_MERULA
 		if (client->mode == MODE_RECOVERY) {
 			is_recovery = 1;
-		}
+	}
 #endif
 		mutex_unlock(&client->device_event_mutex);
 		dfu_client_new(client);
