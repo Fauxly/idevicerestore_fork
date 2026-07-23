@@ -28,6 +28,7 @@
 #include <libirecovery.h>
 
 #include <libtatsu/tss.h>
+#include "normal.h"
 
 #include "dfu.h"
 #include "recovery.h"
