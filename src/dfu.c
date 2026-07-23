@@ -650,10 +650,26 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 #ifdef HAVE_TURDUS_MERULA
     if (!(client->flags & FLAG_QUIT) &&
         (client->flags & FLAG_DOWNGRADE) &&
-        have_arm64_second_stage_iboot(client->cpid) &&
+        is_a10_variant_soc(client->cpid) &&
         client->mode == MODE_NORMAL) {
-        logger(LL_INFO, "Device booted into Normal mode after iBSS — expected for tethered downgrade on this chip.\n");
-        goto wait_yolo_dfu;
+
+        logger(LL_INFO, "Device booted into Normal mode after iBSS — expected camouflage boot for A10(X) tethered downgrade.\n");
+        logger(LL_INFO, "Requesting device to enter recovery mode via lockdownd...\n");
+
+        /* normal_enter_recovery() manages device_event_mutex itself —
+           must release our lock before calling it to avoid deadlock */
+        mutex_unlock(&client->device_event_mutex);
+
+        if (normal_enter_recovery(client) < 0) {
+            if (!(client->flags & FLAG_QUIT)) {
+                logger(LL_ERROR, "Unable to place device into recovery mode from normal mode\n");
+            }
+            return -1;
+        }
+
+        /* normal_enter_recovery() already waits for disconnect + reconnect
+           in recovery mode internally; client->mode is now MODE_RECOVERY */
+        return 0;
     }
 #endif
 
