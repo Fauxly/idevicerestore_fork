@@ -913,6 +913,11 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
             if (client->build_major < 20 || is_a10_variant_soc(client->cpid)) {
                 irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
             }
+            if (is_a10_variant_soc(client->cpid)) {
+                logger(LL_INFO, "A10(X): skipping post-iBEC disconnect wait, proceeding to recovery client\n");
+                dfu_client_free(client);
+                goto skip_ibec;
+            }
         #else
             if (client->build_major < 20) {
                 irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
