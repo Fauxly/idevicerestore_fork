@@ -232,22 +232,30 @@ int recovery_enter_restore(struct idevicerestore_client_t* client, plist_t build
 	}
 
 	mutex_lock(&client->device_event_mutex);
-	if (recovery_send_kernelcache(client, build_identity) < 0) {
-		mutex_unlock(&client->device_event_mutex);
-		logger(LL_ERROR, "Unable to send KernelCache\n");
-		return -1;
-	}
+if (recovery_send_kernelcache(client, build_identity) < 0) {
+    mutex_unlock(&client->device_event_mutex);
+    logger(LL_ERROR, "Unable to send KernelCache\n");
+    return -1;
+}
 
-	logger(LL_DEBUG, "Waiting for device to disconnect...\n");
-	cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 30000);
-	if (client->mode == MODE_RECOVERY || (client->flags & FLAG_QUIT)) {
-		mutex_unlock(&client->device_event_mutex);
-		logger(LL_ERROR, "Failed to place device in restore mode\n");
-		return -1;
-	}
-	mutex_unlock(&client->device_event_mutex);
+logger(LL_DEBUG, "Waiting for device to disconnect...\n");
+cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 30000);
+if (client->mode == MODE_RECOVERY || (client->flags & FLAG_QUIT)) {
+    mutex_unlock(&client->device_event_mutex);
 
-	return 0;
+#ifdef HAVE_TURDUS_MERULA
+    if (!(client->flags & FLAG_QUIT) && is_a10_variant_soc(client->cpid)) {
+        logger(LL_INFO, "A10(X): kernelcache sent, assuming boot proceeded despite no observed disconnect\n");
+        return 0;
+    }
+#endif
+
+    logger(LL_ERROR, "Failed to place device in restore mode\n");
+    return -1;
+}
+mutex_unlock(&client->device_event_mutex);
+
+return 0;
 }
 
 int recovery_send_ticket(struct idevicerestore_client_t* client)
