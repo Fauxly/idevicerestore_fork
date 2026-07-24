@@ -719,6 +719,8 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 		logger(LL_INFO, "Nonce: ");
 		logger_dump_hex(LL_INFO, client->nonce, client->nonce_size);
 
+		dfu_client_free(client);
+
 		if (nonce_changed && !(client->flags & FLAG_CUSTOM)) {
 			// ApNonce changed after iBSS. Cached TSS tickets are now stale.
 			logger(LL_INFO, "ApNonce changed after iBSS, refreshing TSS\n");
