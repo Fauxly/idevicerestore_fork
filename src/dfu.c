@@ -720,7 +720,7 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 		logger_dump_hex(LL_INFO, client->nonce, client->nonce_size);
 
 		dfu_client_free(client);
-
+        
 		if (nonce_changed && !(client->flags & FLAG_CUSTOM)) {
 			// ApNonce changed after iBSS. Cached TSS tickets are now stale.
 			logger(LL_INFO, "ApNonce changed after iBSS, refreshing TSS\n");
@@ -750,6 +750,10 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 			}
 			fixup_tss(client->tss);
 		}
+        
+        if (!client->dfu || !client->dfu->client) {
+            dfu_client_new(client);
+        }
 
 		if (irecv_usb_set_configuration(client->dfu->client, 1) < 0) {
 			logger(LL_ERROR, "set configuration failed\n");
