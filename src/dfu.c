@@ -751,6 +751,10 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 			fixup_tss(client->tss);
 		}
         
+        if (client->recovery) {
+            recovery_client_free(client);
+        }
+
         if (!client->dfu || !client->dfu->client) {
             dfu_client_new(client);
         }
