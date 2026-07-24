@@ -901,6 +901,14 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 			return -1;
 		}
 
+		if (client->mode == MODE_RECOVERY) {
+			sleep(1);
+			if (irecv_send_command_breq(client->dfu->client, "go", 1) != IRECV_E_SUCCESS) {
+				mutex_unlock(&client->device_event_mutex);
+				logger(LL_ERROR, "Unable to execute iBEC\n");
+				return -1;
+			}
+
 		#ifdef HAVE_TURDUS_MERULA
             if (client->build_major < 20 || is_a10_variant_soc(client->cpid)) {
                 irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
