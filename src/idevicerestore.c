@@ -3043,9 +3043,18 @@ value = NULL; \
 	idevicerestore_progress(client, RESTORE_STEP_PREPARE, 0.9);
 
 	if (client->mode != MODE_RESTORE) {
-		mutex_lock(&client->device_event_mutex);
-		logger(LL_INFO, "Waiting for device to enter restore mode...\n");
-		cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 100000000);
+    mutex_lock(&client->device_event_mutex);
+    logger(LL_INFO, "Waiting for device to enter restore mode...\n");
+
+    {
+        int total_waited = 0;
+        const int step_ms = 5000;
+        const int max_wait_ms = 100000000;
+        while (client->mode == MODE_UNKNOWN && !(client->flags & FLAG_QUIT) && total_waited < max_wait_ms) {
+            cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, step_ms);
+            total_waited += step_ms;
+        }
+    }
 #ifdef HAVE_TURDUS_MERULA
 		if ((client->flags & FLAG_DOWNGRADE) && is_arm64_soc(client->cpid)) {
 			plist_t my_tss = NULL;
