@@ -909,9 +909,9 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 				return -1;
 			}
 
-			if (client->build_major < 20) {
-				irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
-			}
+			if (client->build_major < 20 || is_a10_variant_soc(client->cpid)) {
+                irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
+            }
 		}
 		dfu_client_free(client);
 	}
