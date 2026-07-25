@@ -358,6 +358,21 @@ static int compare_versions(const char *s_ver1, const char *s_ver2)
 static void idevice_event_cb(const idevice_event_t *event, void *userdata)
 {
 	struct idevicerestore_client_t *client = (struct idevicerestore_client_t*)userdata;
+
+	static void idevice_event_cb(const idevice_event_t *event, void *userdata)
+{
+	logger(LL_INFO,
+    "[USB EVENT] event=%d udid=%s current_mode=%s\n",
+    event->event,
+    event->udid ? event->udid : "(null)",
+    client->mode ? client->mode->string : "NULL");
+	struct idevicerestore_client_t *client = (struct idevicerestore_client_t*)userdata;
+	
+#ifdef HAVE_ENUM_IDEVICE_CONNECTION_TYPE
+	if (event->conn_type != CONNECTION_USBMUXD) {
+		// ignore everything but devices connected through USB
+		return;
+	}
 #ifdef HAVE_ENUM_IDEVICE_CONNECTION_TYPE
 	if (event->conn_type != CONNECTION_USBMUXD) {
 		// ignore everything but devices connected through USB
@@ -3217,8 +3232,20 @@ value = NULL; \
 					return -1;
 				}
 				
-				logger(LL_INFO, "Waiting for device to enter restore mode...\n");
-				cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, 500000000);
+				logger(LL_INFO, "=== Waiting for Restore Mode ===\n");
+                logger(LL_INFO, "Current mode before wait: %s\n",
+                    client->mode ? client->mode->string : "NULL");
+                logger(LL_INFO, "Flags: 0x%x\n", client->flags);
+
+                logger(LL_INFO, "Waiting for device to enter restore mode...\n");
+                cond_wait_timeout(&client->device_event_cond,
+                    &client->device_event_mutex,
+                    500000000);
+
+                logger(LL_INFO, "=== Wait finished ===\n");
+                logger(LL_INFO, "Current mode after wait: %s\n",
+                    client->mode ? client->mode->string : "NULL");
+                logger(LL_INFO, "Flags: 0x%x\n", client->flags);
 			}
 		}
 #endif
