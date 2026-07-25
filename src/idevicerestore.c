@@ -642,7 +642,7 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 		int not_pwnd = dfu_get_pwned_dfu(client);
 		if (not_pwnd) {
 			logger(LL_ERROR, "You need to put your device into pwned DFU mode.\n");
-			return -1;
+		//	return -1;
 		}
 		
 		if (
