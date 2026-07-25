@@ -1922,6 +1922,19 @@ memcpy(component_data, client->t_##name.im4p.data, component_size); \
 			logger(LL_ERROR, "Unable to extract component: %s\n", component);
 			return -1;
 		}
+		
+		logger(LL_INFO,
+    "Extracted RestoreSEP from IPSW: %zu bytes\n",
+    component_size);
+
+#ifdef HAVE_TURDUS_MERULA
+if (client->rsep.data) {
+    logger(LL_INFO,
+        "External RestoreSEP: %zu bytes\n",
+        client->rsep.length);
+}
+#endif
+
 		plist_t sep_tss = client->tss;
 #ifdef HAVE_TURDUS_MERULA
 		if (client->flags & FLAG_TETHERED) {
