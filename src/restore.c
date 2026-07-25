@@ -1916,31 +1916,54 @@ memcpy(component_data, client->t_##name.im4p.data, component_size); \
 	if (build_identity_has_component(client->restore->build_identity, "RestoreSEP") &&
 	    build_identity_get_component_path(client->restore->build_identity, "RestoreSEP", &restore_sep_path) == 0) {
 		component = "RestoreSEP";
-		ret = extract_component(client->ipsw, restore_sep_path, &component_data, &component_size);
-		free(restore_sep_path);
-		if (ret < 0) {
-			logger(LL_ERROR, "Unable to extract component: %s\n", component);
-			return -1;
-		}
-		
-		logger(LL_INFO,
+ret = extract_component(client->ipsw, restore_sep_path, &component_data, &component_size);
+free(restore_sep_path);
+
+if (ret < 0) {
+    logger(LL_ERROR, "Unable to extract component: %s\n", component);
+    return -1;
+}
+
+logger(LL_INFO,
     "Extracted RestoreSEP from IPSW: %zu bytes\n",
     component_size);
 
 #ifdef HAVE_TURDUS_MERULA
-if (client->rsep.data) {
+if ((client->flags & FLAG_TETHERED) && client->rsep.data) {
     logger(LL_INFO,
         "External RestoreSEP: %zu bytes\n",
         client->rsep.length);
+
+    logger(LL_INFO,
+        "Replacing IPSW RestoreSEP with external RestoreSEP\n");
+
+    free(component_data);
+    component_data = NULL;
+
+    component_size = client->rsep.length;
+    component_data = malloc(component_size);
+    if (!component_data) {
+        logger(LL_ERROR, "malloc failed for RestoreSEP\n");
+        return -1;
+    }
+
+    memcpy(component_data, client->rsep.data, component_size);
+
+    logger(LL_INFO,
+        "External RestoreSEP copied (%zu bytes)\n",
+        component_size);
 }
 #endif
 
-		plist_t sep_tss = client->tss;
+plist_t sep_tss = client->tss;
 #ifdef HAVE_TURDUS_MERULA
 		if (client->flags & FLAG_TETHERED) {
 			sep_tss = client->rsep.tss;
 		}
 #endif
+
+ret = personalize_component(client, component, component_data, component_size,
+                            sep_tss, &personalized_data, &personalized_size);
 
 #ifdef HAVE_TURDUS_MERULA
 logger(LL_INFO, "RestoreSEP source: %s (%zu bytes)\n",
@@ -1955,9 +1978,15 @@ logger(LL_INFO,
 #else
 logger(LL_INFO, "RestoreSEP source: IPSW (%zu bytes)\n",
     component_size);
-#endif        
+#endif
 
-		ret = personalize_component(client, component, component_data, component_size, sep_tss, &personalized_data, &personalized_size);
+ret = personalize_component(client,
+                            component,
+                            component_data,
+                            component_size,
+                            sep_tss,
+                            &personalized_data,
+                            &personalized_size);
 		free(component_data);
 		component_data = NULL;
 		component_size = 0;
@@ -1982,57 +2011,42 @@ logger(LL_INFO, "RestoreSEP source: IPSW (%zu bytes)\n",
 			return -1;
 		}
 
-		plist_t sep_tss = client->tss;
+plist_t sep_tss = client->tss;
+
 #ifdef HAVE_TURDUS_MERULA
-		// prevent iboot panic loop // TODO: better handle
-		if (client->flags & FLAG_TETHERED) {
-			sep_tss = client->rsep.tss;
-			if ((client->build_major >= 18) && have_arm64_single_stage_iboot(client->cpid)) { // A10+, iOS 14+
-				// This device doesn't use sep img4 on fs so it's fine anyway
-				if (client->rsep.data) {
-					logger(LL_INFO, "Using cached SEP data\n");
-					free(component_data);
-					component_data = NULL;
-					component_size = client->rsep.length;
-					component_data = malloc(component_size);
-					memcpy(component_data, client->rsep.data, component_size);
-				}
-			}
-		}
+if (client->flags & FLAG_TETHERED) {
+    sep_tss = client->rsep.tss;
+}
+
+logger(LL_INFO, "RestoreSEP source: %s (%zu bytes)\n",
+    client->rsep.data ? "external (--rsep)" : "IPSW",
+    component_size);
+
+logger(LL_INFO,
+    "client->rsep.length=%zu component_size=%zu\n",
+    client->rsep.length,
+    component_size);
+#else
+logger(LL_INFO, "RestoreSEP source: IPSW (%zu bytes)\n",
+    component_size);
 #endif
-		ret = personalize_component(client, component, component_data, component_size, sep_tss, &personalized_data, &personalized_size);
-		free(component_data);
-		component_data = NULL;
-		component_size = 0;
-		if (ret < 0) {
-			logger(LL_ERROR, "Unable to get personalized component: %s\n", component);
-			return -1;
-		}
 
-		plist_dict_set_item(dict, "SEPImageData", plist_new_data((char*)personalized_data, personalized_size));
-		free(personalized_data);
-		personalized_data = NULL;
-		personalized_size = 0;
-	}
+ret = personalize_component(client,
+                            component,
+                            component_data,
+                            component_size,
+                            sep_tss,
+                            &personalized_data,
+                            &personalized_size);
 
-	if (build_identity_has_component(client->restore->build_identity, "SepStage1") &&
-	    build_identity_get_component_path(client->restore->build_identity, "SepStage1", &sep_path) == 0) {
-		component = "SepStage1";
-		ret = extract_component(client->ipsw, sep_path, &component_data, &component_size);
-		free(sep_path);
-		if (ret < 0) {
-			logger(LL_ERROR, "Unable to extract component: %s\n", component);
-			return -1;
-		}
+free(component_data);
+component_data = NULL;
+component_size = 0;
 
-		ret = personalize_component(client, component, component_data, component_size, client->tss, &personalized_data, &personalized_size);
-		free(component_data);
-		component_data = NULL;
-		component_size = 0;
-		if (ret < 0) {
-			logger(LL_ERROR, "Unable to get personalized component: %s\n", component);
-			return -1;
-		}
+if (ret < 0) {
+    logger(LL_ERROR, "Unable to get personalized component: %s\n", component);
+    return -1;
+}
 
 		plist_dict_set_item(dict, "SEPPatchImageData", plist_new_data((char*)personalized_data, personalized_size));
 		free(personalized_data);
