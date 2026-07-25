@@ -3052,7 +3052,9 @@ value = NULL; \
     const int max_wait_ms = 100000000;
     while (client->mode != MODE_RESTORE &&
            client->mode != MODE_DFU &&
+#ifdef HAVE_TURDUS_MERULA
            client->mode != MODE_PONGO &&
+#endif
            !(client->flags & FLAG_QUIT) &&
            total_waited < max_wait_ms) {
         cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, step_ms);
