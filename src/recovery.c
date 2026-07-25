@@ -247,7 +247,7 @@ if (client->mode == MODE_RECOVERY || (client->flags & FLAG_QUIT)) {
     if (!(client->flags & FLAG_QUIT) && is_a10_variant_soc(client->cpid)) {
         logger(LL_INFO, "A10(X): kernelcache sent, assuming boot proceeded despite no observed disconnect\n");
         return 0;
-    }
+    }int total_waited = 0;
 #endif
 
     logger(LL_ERROR, "Failed to place device in restore mode\n");
