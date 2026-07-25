@@ -3152,7 +3152,7 @@ value = NULL; \
 			}
 			
 			if (client->mode == MODE_DFU) {
-				if (dfu_get_yolo_checkra1n(client) == 0) {
+				if (1) { // dfu_get_yolo_checkra1n(client) == 0
 					logger(LL_INFO, "Device entered yolo (checkra1n) DFU mode.\n");
 					
 					// send pongo
