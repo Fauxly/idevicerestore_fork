@@ -331,15 +331,44 @@ if (!strcmp(component, "RestoreSEP") && client->rsep.data) {
     logger(LL_INFO,
         "Recovery: external RestoreSEP available (%zu bytes)\n",
         client->rsep.length);
+
+    logger(LL_INFO,
+        "Recovery: replacing IPSW RestoreSEP with external RestoreSEP\n");
+
+    free(component_data);
+    component_data = NULL;
+
+    component_size = client->rsep.length;
+    component_data = malloc(component_size);
+    if (!component_data) {
+        logger(LL_ERROR, "malloc failed for RestoreSEP\n");
+        return -1;
+    }
+
+    memcpy(component_data,
+           client->rsep.data,
+           component_size);
 }
 #endif
 
-	ret = personalize_component(client, component, component_data, component_size, client->tss, &data, &size);
-	free(component_data);
-	if (ret < 0) {
-		logger(LL_ERROR, "Unable to get personalized component: %s\n", component);
-		return -1;
-	}
+logger(LL_INFO,
+    "Recovery: RestoreSEP used for personalization (%zu bytes)\n",
+    component_size);
+
+ret = personalize_component(client,
+                            component,
+                            component_data,
+                            component_size,
+                            client->tss,
+                            &data,
+                            &size);
+
+free(component_data);
+
+if (ret < 0) {
+    logger(LL_ERROR, "Unable to get personalized component: %s\n", component);
+    return -1;
+}
 
 	logger(LL_INFO, "Sending %s (%zu bytes)...\n", component, size);
 
