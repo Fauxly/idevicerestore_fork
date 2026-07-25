@@ -628,6 +628,21 @@ int idevicerestore_start(struct idevicerestore_client_t* client)
 	idevicerestore_progress(client, RESTORE_STEP_DETECT, 0.2);
 	logger(LL_INFO, "Identified device as %s, %s\n", client->device->hardware_model, client->device->product_type);
 
+	#ifdef HAVE_TURDUS_MERULA
+if (client->mode == MODE_DFU && client->cpid == 0) {
+    unsigned int cpid_early = 0;
+    unsigned int bdid_early = 0;
+    if (dfu_get_cpid(client, &cpid_early) == 0) {
+        client->cpid = cpid_early;
+    }
+    if (dfu_get_bdid(client, &bdid_early) == 0) {
+        client->bdid = bdid_early;
+    }
+}
+#endif
+
+if ((client->flags & FLAG_PWN) && (client->mode != MODE_DFU)) {
+
 	if ((client->flags & FLAG_PWN) && (client->mode != MODE_DFU)) {
 		logger(LL_ERROR, "you need to put your device into DFU mode to pwn it.\n");
 		return -1;
