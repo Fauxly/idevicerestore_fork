@@ -247,7 +247,7 @@ if (client->mode == MODE_RECOVERY || (client->flags & FLAG_QUIT)) {
     if (!(client->flags & FLAG_QUIT) && is_a10_variant_soc(client->cpid)) {
         logger(LL_INFO, "A10(X): kernelcache sent, assuming boot proceeded despite no observed disconnect\n");
         return 0;
-    }int total_waited = 0;
+    }
 #endif
 
     logger(LL_ERROR, "Failed to place device in restore mode\n");
@@ -325,31 +325,6 @@ if (!strcmp(component, "RestoreSEP")) {
         "Recovery: extracted RestoreSEP from IPSW (%zu bytes)\n",
         component_size);
 }
-
-    #ifdef HAVE_TURDUS_MERULA
-if (!strcmp(component, "RestoreSEP") && client->rsep.data) {
-    logger(LL_INFO,
-        "Recovery: external RestoreSEP available (%zu bytes)\n",
-        client->rsep.length);
-
-    logger(LL_INFO,
-        "Recovery: replacing IPSW RestoreSEP with external RestoreSEP\n");
-
-    free(component_data);
-    component_data = NULL;
-
-    component_size = client->rsep.length;
-    component_data = malloc(component_size);
-    if (!component_data) {
-        logger(LL_ERROR, "malloc failed for RestoreSEP\n");
-        return -1;
-    }
-
-    memcpy(component_data,
-           client->rsep.data,
-           component_size);
-}
-#endif
 
 logger(LL_INFO,
     "Recovery: RestoreSEP used for personalization (%zu bytes)\n",
