@@ -1929,10 +1929,20 @@ memcpy(component_data, client->t_##name.im4p.data, component_size); \
 		}
 #endif
 
-    logger(LL_INFO, "RestoreSEP source: %s (%zu bytes)\n",
-        (client->flags & FLAG_TETHERED && client->rsep.data) ?
-            "external (--rsep)" : "IPSW",
-        component_size);        
+#ifdef HAVE_TURDUS_MERULA
+logger(LL_INFO, "RestoreSEP source: %s (%zu bytes)\n",
+    (client->flags & FLAG_TETHERED && client->rsep.data) ?
+        "external (--rsep)" : "IPSW",
+    component_size);
+
+logger(LL_INFO,
+    "client->rsep.length=%zu component_size=%zu\n",
+    client->rsep.length,
+    component_size);
+#else
+logger(LL_INFO, "RestoreSEP source: IPSW (%zu bytes)\n",
+    component_size);
+#endif        
 
 		ret = personalize_component(client, component, component_data, component_size, sep_tss, &personalized_data, &personalized_size);
 		free(component_data);
