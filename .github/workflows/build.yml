@@ -489,18 +489,25 @@ jobs:
           echo "========================================"
 
           file ./src/idevicerestore
-
+    
           echo "Searching for Turdus Merula options..."
 
           strings ./src/idevicerestore | grep -E \
-            'show-hash|override-cpf|override-ramdisk|api-url|rsep-manifest|rsep-variant' || true
+           'show-hash|override-cpf|override-ramdisk|api-url|rsep-manifest|rsep-variant' || true
+
+          echo "===== Recovery strings ====="
+          strings ./src/idevicerestore | grep "Recovery:" || true
+
+          echo "===== RestoreSEP replacement ====="
+          strings ./src/idevicerestore | grep "external RestoreSEP" || true
+          strings ./src/idevicerestore | grep "Replacing IPSW RestoreSEP" || true
 
           if ! strings ./src/idevicerestore | grep -q "override-cpf"; then
               echo "ERROR: Turdus Merula options are missing from binary"
               exit 1
           fi
 
-          echo "SUCCESS: Turdus Merula support is present in binary"
+              echo "SUCCESS: Turdus Merula support is present in binary"
 
     - name: show Turdus Merula help
       run: |
