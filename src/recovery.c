@@ -340,9 +340,39 @@ if (!strcmp(component, "RestoreSEP")) {
         component_size);
 }
 
-logger(LL_INFO,
-    "Recovery: RestoreSEP used for personalization (%zu bytes)\n",
-    component_size);
+#ifdef HAVE_TURDUS_MERULA
+if (!strcmp(component, "RestoreSEP") && client->rsep.data) {
+    logger(LL_INFO,
+        "Recovery: external RestoreSEP available (%zu bytes)\n",
+        client->rsep.length);
+
+    logger(LL_INFO,
+        "Recovery: replacing IPSW RestoreSEP with external RestoreSEP\n");
+
+    free(component_data);
+
+    component_size = client->rsep.length;
+    component_data = malloc(component_size);
+    if (!component_data) {
+        logger(LL_ERROR, "malloc failed for RestoreSEP\n");
+        return -1;
+    }
+
+    memcpy(component_data,
+           client->rsep.data,
+           component_size);
+
+    logger(LL_INFO,
+        "Recovery: external RestoreSEP copied (%zu bytes)\n",
+        component_size);		   
+}
+#endif
+
+if (!strcmp(component, "RestoreSEP")) {
+    logger(LL_INFO,
+        "Recovery: RestoreSEP used for personalization (%zu bytes)\n",
+        component_size);
+}
 
 ret = personalize_component(client,
                             component,
