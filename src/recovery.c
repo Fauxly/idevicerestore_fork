@@ -583,16 +583,43 @@ int recovery_send_kernelcache(struct idevicerestore_client_t* client, plist_t bu
 		return -1;
 	}
 
-	irecv_usb_control_transfer(client->recovery->client, 0x21, 1, 0, 0, 0, 0, 5000);
+	irecv_error_t usbret = irecv_usb_control_transfer(
+    client->recovery->client,
+    0x21, 1, 0, 0, 0, 0, 5000);
 
-	if (client->restore_boot_args) {
+logger(LL_INFO,
+       "USB control transfer returned %d (%s)\n",
+       usbret,
+       irecv_strerror(usbret));
+
+if (client->restore_boot_args) {
 		char setba[256];
 		strcpy(setba, "setenv boot-args ");
 		strcat(setba, client->restore_boot_args);
 		recovery_error = irecv_send_command(client->recovery->client, setba);
+
+		logger(LL_INFO,
+       "setenv boot-args returned %d (%s)\n",
+       recovery_error,
+       irecv_strerror(recovery_error));
 	}
 
 	logger(LL_INFO, "About to execute bootx...\n");
+
+char *value = NULL;
+
+if (irecv_getenv(client->recovery->client,
+                 "boot-stage",
+                 &value) == IRECV_E_SUCCESS) {
+    logger(LL_INFO,
+        "PRE BOOTX boot-stage=%s\n",
+        value ? value : "(null)");
+}
+
+if (value) {
+    free(value);
+    value = NULL;
+}
 
 recovery_error = irecv_send_command_breq(client->recovery->client, "bootx", 1);
 
@@ -608,7 +635,37 @@ if (recovery_error != IRECV_E_SUCCESS) {
 
 logger(LL_INFO, "bootx command completed\n");
 
-	return 0;
+sleep(1);
+
+value = NULL;
+
+if (irecv_getenv(client->recovery->client,
+                 "boot-stage",
+                 &value) == IRECV_E_SUCCESS) {
+    logger(LL_INFO,
+        "POST BOOTX boot-stage=%s\n",
+        value ? value : "(null)");
+}
+
+if (value) {
+    free(value);
+    value = NULL;
+}
+
+if (irecv_getenv(client->recovery->client,
+                 "build-style",
+                 &value) == IRECV_E_SUCCESS) {
+    logger(LL_INFO,
+        "POST BOOTX build-style=%s\n",
+        value ? value : "(null)");
+}
+
+if (value) {
+    free(value);
+    value = NULL;
+}
+
+return 0;
 }
 
 int recovery_is_image4_supported(struct idevicerestore_client_t* client)
