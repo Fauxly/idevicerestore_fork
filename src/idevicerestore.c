@@ -3904,6 +3904,11 @@ int main(int argc, char* argv[])
 					usage(argc, argv, 1);
 					return EXIT_FAILURE;
 				}
+				logger(LL_INFO,
+                    "Loaded --rsep: data=%p length=%zu\n",
+                    (void*)client->rsep.data,
+                    client->rsep.length);
+					
 				break;
 				
 			case 13:
