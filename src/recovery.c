@@ -583,14 +583,18 @@ int recovery_send_kernelcache(struct idevicerestore_client_t* client, plist_t bu
 		return -1;
 	}
 
-	irecv_error_t usbret = irecv_usb_control_transfer(
-    client->recovery->client,
-    0x21, 1, 0, 0, 0, 0, 5000);
-
-logger(LL_INFO,
-       "USB control transfer returned %d (%s)\n",
-       usbret,
-       irecv_strerror(usbret));
+	irecv_error_t usbret = IRECV_E_UNKNOWN_ERROR;
+for (int ctrl_retry = 0; ctrl_retry < 3 && usbret != IRECV_E_SUCCESS; ctrl_retry++) {
+    if (ctrl_retry > 0) {
+        usleep(200000);
+    }
+    usbret = irecv_usb_control_transfer(
+        client->recovery->client,
+        0x21, 1, 0, 0, 0, 0, 5000);
+    logger(LL_INFO,
+           "USB control transfer attempt %d returned %d (%s)\n",
+           ctrl_retry + 1, usbret, irecv_strerror(usbret));
+}
 
 if (client->restore_boot_args) {
 		char setba[256];
