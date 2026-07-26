@@ -168,6 +168,11 @@ int recovery_enter_restore(struct idevicerestore_client_t* client, plist_t build
 	irecv_getenv(client->recovery->client, "boot-stage", &value);
 	if (value) {
 		boot_stage = strtoul(value, NULL, 0);
+
+        logger(LL_INFO,
+               "boot-stage raw='%s' numeric=%lu\n",
+               value,
+               boot_stage);
 	}
 	if (boot_stage > 0) {
 		logger(LL_INFO, "iBoot boot-stage=%s\n", value);
@@ -583,18 +588,8 @@ int recovery_send_kernelcache(struct idevicerestore_client_t* client, plist_t bu
 		return -1;
 	}
 
-	irecv_error_t usbret = IRECV_E_UNKNOWN_ERROR;
-for (int ctrl_retry = 0; ctrl_retry < 3 && usbret != IRECV_E_SUCCESS; ctrl_retry++) {
-    if (ctrl_retry > 0) {
-        usleep(200000);
-    }
-    usbret = irecv_usb_control_transfer(
-        client->recovery->client,
-        0x21, 1, 0, 0, 0, 0, 5000);
-    logger(LL_INFO,
-           "USB control transfer attempt %d returned %d (%s)\n",
-           ctrl_retry + 1, usbret, irecv_strerror(usbret));
-}
+	// removed: 0x21/1 control transfer here consistently returned -255
+	// (3/3 attempts) with no effect on subsequent bootx/boot-stage behavior
 
 if (client->restore_boot_args) {
 		char setba[256];
