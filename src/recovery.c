@@ -244,7 +244,7 @@ if (client->mode == MODE_RECOVERY || (client->flags & FLAG_QUIT)) {
     mutex_unlock(&client->device_event_mutex);
 
 #ifdef HAVE_TURDUS_MERULA
-    if (!(client->flags & FLAG_QUIT) && is_a10_variant_soc(client->cpid) && (client->flags & FLAG_DOWNGRADE)) {
+    if (!(client->flags & FLAG_QUIT) && is_a10_variant_soc(client->cpid)) {
     logger(LL_INFO, "A10(X): kernelcache sent, assuming boot proceeded despite no observed disconnect\n");
     return 0;
 }
