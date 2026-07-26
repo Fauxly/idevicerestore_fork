@@ -3081,6 +3081,12 @@ value = NULL; \
            total_waited < max_wait_ms) {
         cond_wait_timeout(&client->device_event_cond, &client->device_event_mutex, step_ms);
         total_waited += step_ms;
+		
+		logger(LL_INFO,
+           "WAIT: mode=%s flags=0x%x waited=%d ms\n",
+           client->mode ? client->mode->string : "NULL",
+           client->flags,
+           total_waited);
     }
 }
 #ifdef HAVE_TURDUS_MERULA
@@ -3908,7 +3914,7 @@ int main(int argc, char* argv[])
                     "Loaded --rsep: data=%p length=%zu\n",
                     (void*)client->rsep.data,
                     client->rsep.length);
-					
+
 				break;
 				
 			case 13:
