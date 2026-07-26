@@ -296,12 +296,19 @@ int recovery_send_component(struct idevicerestore_client_t* client, plist_t buil
 	char* path = NULL;
 	irecv_error_t err = 0;
 
-	logger(LL_INFO,
+	#ifdef HAVE_TURDUS_MERULA
+logger(LL_INFO,
     "recovery_send_component: component=%s rsep.data=%p rsep.length=%zu flags=0x%x\n",
     component,
-    client->rsep.data,
+    (void*)client->rsep.data,
     client->rsep.length,
     client->flags);
+#else
+logger(LL_INFO,
+    "recovery_send_component: component=%s flags=0x%x\n",
+    component,
+    client->flags);
+#endif
 
 	if (client->tss) {
 		if (tss_response_get_path_by_entry(client->tss, component, &path) < 0) {
