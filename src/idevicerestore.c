@@ -642,11 +642,9 @@ if (client->mode == MODE_DFU && client->cpid == 0) {
 #endif
 
 if ((client->flags & FLAG_PWN) && (client->mode != MODE_DFU)) {
-
-	if ((client->flags & FLAG_PWN) && (client->mode != MODE_DFU)) {
-		logger(LL_ERROR, "you need to put your device into DFU mode to pwn it.\n");
-		return -1;
-	}
+	logger(LL_ERROR, "you need to put your device into DFU mode to pwn it.\n");
+	return -1;
+}
 
 #ifdef HAVE_TURDUS_MERULA
 	if (client->flags & FLAG_DOWNGRADE) {
