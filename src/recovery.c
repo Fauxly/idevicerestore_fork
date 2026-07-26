@@ -548,11 +548,21 @@ int recovery_send_kernelcache(struct idevicerestore_client_t* client, plist_t bu
 		recovery_error = irecv_send_command(client->recovery->client, setba);
 	}
 
-	recovery_error = irecv_send_command_breq(client->recovery->client, "bootx", 1);
-	if (recovery_error != IRECV_E_SUCCESS) {
-		logger(LL_ERROR, "Unable to execute %s\n", component);
-		return -1;
-	}
+	logger(LL_INFO, "About to execute bootx...\n");
+
+recovery_error = irecv_send_command_breq(client->recovery->client, "bootx", 1);
+
+logger(LL_INFO,
+       "bootx returned %d (%s)\n",
+       recovery_error,
+       irecv_strerror(recovery_error));
+
+if (recovery_error != IRECV_E_SUCCESS) {
+    logger(LL_ERROR, "Unable to execute %s\n", component);
+    return -1;
+}
+
+logger(LL_INFO, "bootx command completed\n");
 
 	return 0;
 }
