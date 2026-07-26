@@ -910,19 +910,29 @@ if ((client->mode != MODE_DFU && client->mode != MODE_RECOVERY) ||
 			}
 
 		#ifdef HAVE_TURDUS_MERULA
-            if (client->build_major < 20 || is_a10_variant_soc(client->cpid)) {
-                irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
-            }
-            if (is_a10_variant_soc(client->cpid) && (client->flags & FLAG_DOWNGRADE)) {
-                logger(LL_INFO, "A10(X): skipping post-iBEC disconnect wait, proceeding to recovery client\n");
-                dfu_client_free(client);
-                goto skip_ibec;
-            }
-        #else
-            if (client->build_major < 20) {
-                irecv_usb_control_transfer(client->dfu->client, 0x21, 1, 0, 0, 0, 0, 5000);
-            }
-        #endif
+    if (client->build_major < 20 || is_a10_variant_soc(client->cpid)) {
+        irecv_usb_control_transfer(client->dfu->client,
+                                   0x21, 1, 0, 0, 0, 0, 5000);
+    }
+
+    if (is_a10_variant_soc(client->cpid) &&
+        (client->flags & FLAG_DOWNGRADE)) {
+
+        logger(LL_INFO,
+            "A10(X): waiting 2 seconds for Recovery USB reconnect...\n");
+
+        dfu_client_free(client);
+
+        usleep(2000000);
+
+        goto skip_ibec;
+    }
+#else
+    if (client->build_major < 20) {
+        irecv_usb_control_transfer(client->dfu->client,
+                                   0x21, 1, 0, 0, 0, 0, 5000);
+    }
+#endif
         }
 		dfu_client_free(client);
 	}
