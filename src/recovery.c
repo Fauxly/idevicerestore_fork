@@ -416,17 +416,36 @@ int recovery_send_component_and_command(struct idevicerestore_client_t* client, 
 	irecv_error_t recovery_error = IRECV_E_SUCCESS;
 
 	if (recovery_send_component(client, build_identity, component) < 0) {
-		logger(LL_ERROR, "Unable to send %s to device.\n", component);
-		return -1;
-	}
+    logger(LL_ERROR, "Unable to send %s to device.\n", component);
+    return -1;
+}
 
-	recovery_error = irecv_send_command(client->recovery->client, command);
-	if (recovery_error != IRECV_E_SUCCESS) {
-		logger(LL_ERROR, "Unable to execute %s\n", component);
-		return -1;
-	}
+char *value = NULL;
 
-	return 0;
+recovery_error = irecv_send_command(client->recovery->client, command);
+if (recovery_error != IRECV_E_SUCCESS) {
+    logger(LL_ERROR, "Unable to execute %s\n", component);
+    return -1;
+}
+
+logger(LL_INFO, "Executed command: %s\n", command);
+
+if (irecv_getenv(client->recovery->client, "boot-stage", &value) == IRECV_E_SUCCESS) {
+    logger(LL_INFO,
+           "After %s: boot-stage=%s\n",
+           command,
+           value ? value : "(null)");
+} else {
+    logger(LL_INFO,
+           "After %s: boot-stage unavailable\n",
+           command);
+}
+
+if (value) {
+    free(value);
+}
+
+return 0;
 }
 
 int recovery_send_ibec(struct idevicerestore_client_t* client, plist_t build_identity)
