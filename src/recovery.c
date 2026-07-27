@@ -141,6 +141,8 @@ int recovery_enter_restore(struct idevicerestore_client_t* client, plist_t build
 			return -1;
 		}
 	}
+     
+    usleep(300000);
 
 	if ((client->build_major > 8) && !(client->flags & FLAG_CUSTOM)) {
 		if (!client->image4supported) {
