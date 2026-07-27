@@ -3083,10 +3083,11 @@ value = NULL; \
         total_waited += step_ms;
 		
 		logger(LL_INFO,
-           "WAIT: mode=%s flags=0x%x waited=%d ms\n",
-           client->mode ? client->mode->string : "NULL",
-           client->flags,
-           total_waited);
+               "WAIT: mode=%s (0x%x) flags=0x%x waited=%d ms\n",
+               client->mode ? client->mode->string : "NULL",
+               client->mode ? client->mode->index : 0,
+               client->flags,
+               total_waited);
     }
 }
 #ifdef HAVE_TURDUS_MERULA
